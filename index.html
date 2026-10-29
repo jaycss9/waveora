@@ -84,9 +84,17 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
     <section class="card">
       <div class="label">EXPORT</div>
       <div style="display:flex;flex-direction:column;gap:10px">
-        <button class="btn" id="mp4Btn" type="button">EXPORT 4K MP4</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="resSelector">
+          <button class="btn active" id="res1080Btn" data-res="1080p" type="button" style="font-size:10px;padding:7px 4px">1080P (HD)</button>
+          <button class="btn" id="res4kBtn" data-res="4k" type="button" style="font-size:10px;padding:7px 4px">4K (UHD)</button>
+        </div>
+        <button class="btn" id="mp4Btn" type="button">EXPORT 1080P MP4</button>
+        <button class="btn" id="webmBtn" type="button" style="background:#FAF8F5">EXPORT WEBM (FAST)</button>
         <button class="btn" id="pngBtn" type="button">SAVE PNG</button>
-        <p id="exportNote" style="font-size:10px;color:#9A9A9A;line-height:1.4">4K-sized MP4 export via FFmpeg.wasm. First export loads the encoder; keep this tab open while it processes.</p>
+        <div id="exportFallback" style="display:none">
+          <button class="btn" id="fallbackWebmBtn" type="button" style="background:#FFF0F0;border-color:#FF6B6B;color:#B42318;font-size:10px;padding:8px">DOWNLOAD RECORDED WEBM</button>
+        </div>
+        <p id="exportNote" style="font-size:10px;color:#9A9A9A;line-height:1.4">1080p MP4 via FFmpeg.wasm (H.264 + AAC). Best for Reels, TikTok & Shorts. Keep tab open during export.</p>
       </div>
     </section>
   </div>
@@ -127,12 +135,12 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
     <section class="card">
       <div class="label">VISUAL TEXT</div>
       <div style="display:flex;flex-direction:column;gap:10px">
-        <label class="fld">NAME<input id="tName" value="cedania" maxlength="40"></label>
+        <label class="fld">NAME<input id="tName" value="meow meow" maxlength="40"></label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <label class="fld">BPM<input id="tBpm" value="102" maxlength="6"></label>
           <label class="fld">KEY<input id="tKey" value="D" maxlength="6"></label>
         </div>
-        <label class="fld">@HANDLE<input id="tHandle" value="@nikitaakira" maxlength="30"></label>
+        <label class="fld">@HANDLE<input id="tHandle" value="@beatsbyskkai" maxlength="30"></label>
       </div>
     </section>
     <section class="card">
@@ -150,8 +158,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 "use strict";
 const $=id=>document.getElementById(id);
 const canvas=$("mainCanvas"), frame=$("frame"), A=canvas.getContext("2d",{alpha:false});
-const el={audioDrop:$("audioDrop"),audioFile:$("audioFile"),audioStatus:$("audioStatus"),seek:$("seek"),timeDisplay:$("timeDisplay"),playBtn:$("playBtn"),mp4Btn:$("mp4Btn"),pngBtn:$("pngBtn"),recordTimer:$("recordTimer"),toast:$("toast"),analysis:$("analysis"),sens:$("sensitivity"),volume:$("volume")};
-const WT={name:"cedania",bpm:"102",key:"D",handle:"@nikitaakira",get info(){return `${this.bpm} BPM${this.key?" "+this.key:""}`}};
+const el={audioDrop:$("audioDrop"),audioFile:$("audioFile"),audioStatus:$("audioStatus"),seek:$("seek"),timeDisplay:$("timeDisplay"),playBtn:$("playBtn"),mp4Btn:$("mp4Btn"),webmBtn:$("webmBtn"),fallbackWebmBtn:$("fallbackWebmBtn"),exportFallback:$("exportFallback"),pngBtn:$("pngBtn"),recordTimer:$("recordTimer"),toast:$("toast"),analysis:$("analysis"),sens:$("sensitivity"),volume:$("volume")};
+const WT={name:"meow meow",bpm:"102",key:"D",handle:"@beatsbyskkai",get info(){return `${this.bpm} BPM${this.key?" "+this.key:""}`}};
 const f=frame; // used by draw functions for size
 
 let ctx=null,buffer=null,source=null,analyser=null,gain=null,dest=null;
@@ -235,9 +243,18 @@ el.volume.addEventListener("input",()=>{const v=parseFloat(el.volume.value);if(g
 el.sens.addEventListener("input",()=>{V=parseFloat(el.sens.value);$("sensVal").textContent=V.toFixed(1)});
 
 const FIELDS=[["tName","name"],["tBpm","bpm"],["tKey","key"],["tHandle","handle"]];
-const STORE="waveora.visualText.v1";
+const STORE="waveora.visualText.v2";
 let saved={};
-try{saved=JSON.parse(localStorage.getItem(STORE)||"{}")||{}}catch{saved={}}
+try{
+  saved=JSON.parse(localStorage.getItem(STORE)||"{}")||{};
+  if(!localStorage.getItem(STORE)){
+    const old=JSON.parse(localStorage.getItem("waveora.visualText.v1")||"{}");
+    if(old.name&&old.name!=="cedania")saved.name=old.name;
+    if(old.handle&&old.handle!=="@nikitaakira")saved.handle=old.handle;
+    if(old.bpm)saved.bpm=old.bpm;
+    if(old.key)saved.key=old.key;
+  }
+}catch{saved={}}
 const touched=new Set(Object.keys(saved));            // fields the user has set themselves
 FIELDS.forEach(([id,key])=>{
   if(typeof saved[key]==="string"){WT[key]=saved[key];$(id).value=saved[key]}
@@ -253,7 +270,10 @@ FIELDS.forEach(([id,key])=>{
 function resize(){
   const r=frame.getBoundingClientRect();if(!r.width||!r.height)return;
   const p=Math.min(window.devicePixelRatio||1,2);
-  canvas.width=Math.floor(r.width*p);canvas.height=Math.floor(r.height*p);
+  const w=Math.floor(r.width*p);
+  const h=Math.floor(r.height*p);
+  canvas.width=w%2===0?w:w-1;
+  canvas.height=h%2===0?h:h-1;
   A.setTransform(p,0,0,p,0,0);k.paintInit=false;
 }
 new ResizeObserver(resize).observe(frame);
@@ -377,55 +397,173 @@ function frameLoop(){
 }
 
 
-/* ---------- PNG export ---------- */
+/* ---------- export functionality ---------- */
+let targetRes="1080p";
+let currentExportFormat="mp4";
+let lastRecordedBlob=null;
+let lastRecordedExtension="webm";
+
+const SIZES={
+  "1080p":{"9:16":[1080,1920],"16:9":[1920,1080],"1:1":[1080,1080],"4:5":[1080,1350]},
+  "4k":{"9:16":[2160,3840],"16:9":[3840,2160],"1:1":[2160,2160],"4:5":[2160,2700]}
+};
+
+document.querySelectorAll("#resSelector button").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll("#resSelector button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    targetRes=btn.dataset.res;
+    if(!recording){
+      el.mp4Btn.textContent=`EXPORT ${targetRes.toUpperCase()} MP4`;
+    }
+  });
+});
+
+function downloadBlob(blob,filename){
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+
+el.fallbackWebmBtn?.addEventListener("click",()=>{
+  if(!lastRecordedBlob){status("No recording available",true);return}
+  downloadBlob(lastRecordedBlob,`waveora-${mode.replace("REEL-","").toLowerCase()}-recording.${lastRecordedExtension}`);
+  status("Downloaded raw recording.");
+});
+
+/* PNG export */
 el.pngBtn.addEventListener("click",()=>{
   canvas.toBlob(blob=>{
     if(!blob){status("PNG export failed",true);return}
-    const url=URL.createObjectURL(blob),a=document.createElement("a");
-    a.href=url;a.download=`waveora-${mode.replace("REEL-","").toLowerCase()}.png`;
-    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+    downloadBlob(blob,`waveora-${mode.replace("REEL-","").toLowerCase()}.png`);
     status("Saved PNG");
   },"image/png");
 });
 
-/* ---------- high-quality MP4 export via FFmpeg.wasm ---------- */
-el.mp4Btn.addEventListener("click",async()=>{
-  if(recording){if(recorder&&recorder.state!=="inactive")recorder.stop();return}
+function stopRecording(){
+  if(recorder&&recorder.state!=="inactive"){
+    recorder.stop();
+  }
+  pause();
+}
+
+async function startExport(format){
+  if(recording){stopRecording();return}
   if(!buffer||!dest){status("Load audio first",true);return}
+  currentExportFormat=format;
+
   try{
+    resize();
     const stream=new MediaStream([...canvas.captureStream(60).getVideoTracks(),...dest.stream.getAudioTracks()]);
-    const types=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
+    const types=[
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm",
+      "video/mp4;codecs=avc1,mp4a.40.2",
+      "video/mp4"
+    ];
     const type=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t));
-    if(!type)throw new Error("This browser does not support WebM recording. Try current Chrome or Edge.");
-    recorder=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:18000000,audioBitsPerSecond:192000});
+    if(!type)throw new Error("This browser does not support video recording. Try modern Chrome or Edge.");
+
+    const ext=type.includes("mp4")?"mp4":"webm";
+    lastRecordedExtension=ext;
+    recorder=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:16000000,audioBitsPerSecond:192000});
     chunks=[];
-    recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+    recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
     recorder.onerror=e=>{status(`Recording failed: ${e.error?.message||"unknown error"}`,true)};
+
     recorder.onstop=async()=>{
       try{
-        el.mp4Btn.disabled=true;el.mp4Btn.textContent="ENCODING 4K MP4…";
-        status("Recording complete. Loading FFmpeg.wasm… this may take a moment on the first export.");
-        const webmBlob=new Blob(chunks,{type});
+        if(!chunks.length){status("No video recorded",true);return}
+        const recordedBlob=new Blob(chunks,{type});
+        lastRecordedBlob=recordedBlob;
+        if(el.exportFallback)el.exportFallback.style.display="block";
+
         const aspect=document.querySelector("#aspects button.active")?.dataset.aspect||"9:16";
-        const sizes={"9:16":[2160,3840],"16:9":[3840,2160],"1:1":[2160,2160],"4:5":[2160,2700]};
-        const [outW,outH]=sizes[aspect]||sizes["9:16"];
-        const mp4Blob=await window.waveoraEncodeMp4(webmBlob,{outW,outH});
-        const url=URL.createObjectURL(mp4Blob),a=document.createElement("a");
-        a.href=url;a.download=`waveora-${mode.replace("REEL-","").toLowerCase()}-${outW}x${outH}.mp4`;
-        document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-        status(`Saved high-quality MP4 — ${outW}×${outH}, H.264 video + AAC audio.`);
-      }catch(e){console.error(e);status(`MP4 export failed: ${e.message||e}. Open this page from http://localhost (not file://), use current Chrome/Edge, and keep the tab open. If it still fails, send me this exact error message.`,true)}
-      finally{
-        recording=false;el.mp4Btn.disabled=false;el.mp4Btn.textContent="EXPORT 4K MP4";el.mp4Btn.style.background="";el.mp4Btn.style.color="";el.mp4Btn.style.borderColor="";
+        const aspectSizes=SIZES[targetRes]||SIZES["1080p"];
+        const [outW,outH]=aspectSizes[aspect]||aspectSizes["9:16"];
+
+        if(currentExportFormat==="webm"){
+          downloadBlob(recordedBlob,`waveora-${mode.replace("REEL-","").toLowerCase()}.${ext}`);
+          status(`Saved fast ${ext.toUpperCase()} export.`);
+          return;
+        }
+
+        // MP4 export
+        el.mp4Btn.disabled=true;el.mp4Btn.textContent=`ENCODING ${targetRes.toUpperCase()} MP4…`;
+        status("Recording complete. Initializing FFmpeg encoder…");
+
+        let mp4Blob;
+        try{
+          mp4Blob=await window.waveoraEncodeMp4(recordedBlob,{
+            outW,
+            outH,
+            onProgress:(pct)=>{
+              el.mp4Btn.textContent=`ENCODING ${pct}%`;
+              status(`Encoding ${targetRes.toUpperCase()} MP4: ${pct}%`);
+            },
+            onStatus:(msg)=>status(msg)
+          });
+        }catch(encErr){
+          console.error("FFmpeg primary encode error:",encErr);
+          if(targetRes==="4k"){
+            status("4K encode exceeded memory. Falling back to 1080p HD…");
+            el.mp4Btn.textContent="ENCODING 1080P…";
+            const hdSizes=SIZES["1080p"][aspect]||SIZES["1080p"]["9:16"];
+            mp4Blob=await window.waveoraEncodeMp4(recordedBlob,{
+              outW:hdSizes[0],
+              outH:hdSizes[1],
+              onProgress:(pct)=>{
+                el.mp4Btn.textContent=`ENCODING ${pct}%`;
+                status(`Encoding 1080p MP4: ${pct}%`);
+              },
+              onStatus:(msg)=>status(msg)
+            });
+          }else{
+            throw encErr;
+          }
+        }
+
+        downloadBlob(mp4Blob,`waveora-${mode.replace("REEL-","").toLowerCase()}-${outW}x${outH}.mp4`);
+        status(`Saved MP4 — ${outW}×${outH}, H.264 video + AAC audio.`);
+      }catch(e){
+        console.error(e);
+        status(`MP4 export failed: ${e.message||e}. You can download the raw recording with the button below.`,true);
+      }finally{
+        recording=false;
+        el.mp4Btn.disabled=false;
+        el.webmBtn.disabled=false;
+        el.mp4Btn.textContent=`EXPORT ${targetRes.toUpperCase()} MP4`;
+        el.webmBtn.textContent="EXPORT WEBM (FAST)";
+        el.mp4Btn.style.background="";el.mp4Btn.style.color="";el.mp4Btn.style.borderColor="";
+        el.webmBtn.style.background="#FAF8F5";el.webmBtn.style.color="";el.webmBtn.style.borderColor="";
         el.recordTimer.textContent="";clearInterval(recTimer);
       }
     };
+
     recorder.start(250);recording=true;recStart=Date.now();
-    el.mp4Btn.textContent="STOP & SAVE MP4";el.mp4Btn.style.background="#FF3B30";el.mp4Btn.style.color="#fff";el.mp4Btn.style.borderColor="#FF3B30";
-    recTimer=setInterval(()=>{const s=Math.floor((Date.now()-recStart)/1000);el.recordTimer.textContent=`REC ${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`},250);
-    if(!playing){c=0;play()}
+    const activeBtn=format==="mp4"?el.mp4Btn:el.webmBtn;
+    activeBtn.textContent="STOP & SAVE";
+    activeBtn.style.background="#FF3B30";
+    activeBtn.style.color="#fff";
+    activeBtn.style.borderColor="#FF3B30";
+    if(format==="mp4")el.webmBtn.disabled=true;
+    else el.mp4Btn.disabled=true;
+
+    recTimer=setInterval(()=>{
+      const s=Math.floor((Date.now()-recStart)/1000);
+      el.recordTimer.textContent=`REC ${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+    },250);
+
+    c=0;
+    if(playing){stopSource();playing=false}
+    play();
   }catch(e){status(`Record failed: ${e.message}`,true)}
-});
+}
+
+el.mp4Btn.addEventListener("click",()=>startExport("mp4"));
+el.webmBtn.addEventListener("click",()=>startExport("webm"));
 
 setMode("REEL-PATCH");setAspect("9:16");resize();frameLoop();
 })();
@@ -434,28 +572,100 @@ setMode("REEL-PATCH");setAspect("9:16");resize();frameLoop();
 <script type="module">
   import { FFmpeg } from "@ffmpeg/ffmpeg";
   import { fetchFile, toBlobURL } from "@ffmpeg/util";
+
   let ffmpegInstance=null, ffmpegLoading=null;
-  async function getFFmpeg(){
+
+  async function getFFmpeg(onStatus){
     if(ffmpegInstance?.loaded)return ffmpegInstance;
     if(ffmpegLoading)return ffmpegLoading;
+
     ffmpegLoading=(async()=>{
       const ff=new FFmpeg();
-      ff.on("log",({message})=>{if(message)console.debug("FFmpeg:",message)});
-      ff.on("progress",({progress})=>{if(Number.isFinite(progress))console.debug(`FFmpeg progress: ${Math.round(progress*100)}%`)});
-      const base="https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
-      await ff.load({coreURL:await toBlobURL(`${base}/ffmpeg-core.js`,"text/javascript"),wasmURL:await toBlobURL(`${base}/ffmpeg-core.wasm`,"application/wasm")});
-      ffmpegInstance=ff;return ff;
+      const cdnBases=[
+        "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm",
+        "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm"
+      ];
+
+      let lastError=null;
+      for(const base of cdnBases){
+        try{
+          const host=new URL(base).hostname;
+          onStatus?.(`Loading FFmpeg encoder from ${host}…`);
+          const coreURL=await toBlobURL(`${base}/ffmpeg-core.js`,"text/javascript");
+          const wasmURL=await toBlobURL(`${base}/ffmpeg-core.wasm`,"application/wasm");
+          await ff.load({coreURL,wasmURL});
+          ffmpegInstance=ff;
+          return ff;
+        }catch(e){
+          console.warn(`Failed loading FFmpeg from ${base}:`,e);
+          lastError=e;
+        }
+      }
+      throw lastError||new Error("Failed to load FFmpeg from CDN.");
     })();
+
     try{return await ffmpegLoading}finally{ffmpegLoading=null}
   }
-  window.waveoraEncodeMp4=async(blob,{outW,outH})=>{
-    const ff=await getFFmpeg();
-    const input="waveora-input.webm",output="waveora-output.mp4";
-    await ff.writeFile(input,await fetchFile(blob));
-    await ff.exec(["-i",input,"-vf",`scale=${outW}:${outH}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${outW}:${outH}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,format=yuv420p`,"-c:v","libx264","-preset","ultrafast","-crf","18","-pix_fmt","yuv420p","-c:a","aac","-b:a","192k","-ar","48000","-movflags","+faststart","-threads","1","-y",output]);
-    const data=await ff.readFile(output);
-    try{await ff.deleteFile(input);await ff.deleteFile(output)}catch{}
-    return new Blob([data.buffer],{type:"video/mp4"});
+
+  window.waveoraEncodeMp4=async(blob,{outW,outH,onProgress,onStatus}={})=>{
+    const ff=await getFFmpeg(onStatus);
+    const logs=[];
+    const logHandler=({message})=>{
+      if(message){
+        logs.push(message);
+        if(logs.length>40)logs.shift();
+        console.debug("FFmpeg:",message);
+      }
+    };
+    ff.on("log",logHandler);
+
+    let progressHandler=null;
+    if(onProgress){
+      progressHandler=({progress})=>{
+        if(typeof progress==="number"&&Number.isFinite(progress)){
+          onProgress(Math.max(0,Math.min(100,Math.round(progress*100))));
+        }
+      };
+      ff.on("progress",progressHandler);
+    }
+
+    const input="waveora-input.webm", output="waveora-output.mp4";
+    try{
+      onStatus?.("Preparing video data…");
+      const fileData=await fetchFile(blob);
+      await ff.writeFile(input,fileData);
+
+      onStatus?.("Encoding MP4 video…");
+      const vf=`scale=${outW}:${outH}:flags=bicubic,setsar=1,format=yuv420p`;
+      const ret=await ff.exec([
+        "-i",input,
+        "-vf",vf,
+        "-c:v","libx264",
+        "-preset","ultrafast",
+        "-crf","20",
+        "-pix_fmt","yuv420p",
+        "-c:a","aac",
+        "-b:a","192k",
+        "-ar","48000",
+        "-movflags","+faststart",
+        "-threads","1",
+        "-y",output
+      ]);
+
+      if(ret!==0){
+        const errDetail=logs.slice(-5).join(" ")||`code ${ret}`;
+        throw new Error(`FFmpeg error (${errDetail})`);
+      }
+
+      onStatus?.("Exporting MP4…");
+      const data=await ff.readFile(output);
+      return new Blob([data],{type:"video/mp4"});
+    }finally{
+      if(logHandler)ff.off("log",logHandler);
+      if(progressHandler)ff.off("progress",progressHandler);
+      try{await ff.deleteFile(input)}catch{}
+      try{await ff.deleteFile(output)}catch{}
+    }
   };
 </script>
 
