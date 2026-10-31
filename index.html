@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waveora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F5F0;--card:#fff;--line:#E8E0D8;--ink:#111;--mute:#6B6B6B;--lime:#C6FF00}
+*{box-sizing:border-box;margin:0;font-family:'JetBrains Mono',ui-monospace,monospace}
+body{background:var(--bg);color:var(--ink);height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+::selection{background:var(--lime);color:#000}
+header{flex:none;z-index:30;height:56px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 24px;background:rgba(255,255,255,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px;letter-spacing:-1.2px}
+#analysis{font-size:11px;color:var(--mute);background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:6px 16px}
+main{flex:1;min-height:0;width:100%;max-width:1680px;margin:0 auto;padding:16px 24px;display:grid;grid-template-columns:clamp(240px,19vw,300px) minmax(0,1fr) clamp(240px,19vw,300px);gap:20px;align-items:stretch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:0 1px 0 var(--line),0 8px 24px rgba(0,0,0,.05)}
+.label{font-size:10px;letter-spacing:.18em;color:var(--mute);border-bottom:1px solid #F0E6D3;padding-bottom:10px;margin-bottom:14px}
+.col{display:flex;flex-direction:column;gap:16px;min-height:0;overflow-y:auto;padding:2px 4px 4px 2px;scrollbar-width:thin}
+#audioDrop{border:2px dashed var(--line);border-radius:14px;background:#FAF8F5;padding:22px 12px;text-align:center;cursor:pointer;transition:border-color .15s}
+#audioDrop:hover,#audioDrop.over{border-color:var(--ink)}
+#audioDrop b{font-size:12px;display:block}
+#audioDrop small{display:block;font-size:10px;color:#9A9A9A;margin-top:6px}
+#audioStatus{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:11px;color:var(--mute);min-height:36px;display:flex;align-items:center}
+#audioStatus.err{color:#B42318;background:#FFF0F0;border-color:#FF6B6B44}
+.cover{display:flex;gap:12px;align-items:flex-start}
+.thumb{width:96px;height:96px;border-radius:12px;overflow:hidden;background:#FAF8F5;border:1px solid var(--line);position:relative;flex:none}
+.thumb img{width:100%;height:100%;object-fit:cover;display:none}
+.thumb span{position:absolute;inset:6px;border:2px dashed var(--line);border-radius:8px;display:grid;place-items:center;font-size:10px;color:#9A9A9A}
+.btn{display:block;border:1px solid #DDD7CE;border-radius:10px;padding:10px;font-size:11px;font-weight:700;text-align:center;cursor:pointer;background:#fff;color:var(--ink)}
+.btn:hover{border-color:var(--ink)}
+.btn{width:100%;font-family:inherit}
+.row{display:flex;justify-content:space-between;font-size:10px;color:var(--mute)}
+input[type=range]{-webkit-appearance:none;appearance:none;height:4px;background:var(--line);border-radius:10px;outline:none;width:100%}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--ink);border-radius:50%;cursor:pointer;border:2px solid #fff}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;background:var(--ink);border-radius:50%;border:2px solid #fff}
+input[type=range]:disabled{opacity:.4}
+.fld{display:block;font-size:10px;color:var(--mute)}.fld input{display:block;width:100%;margin-top:4px;border:1px solid #DDD7CE;border-radius:10px;padding:9px 10px;font-size:12px;color:var(--ink);background:#fff;outline:none}.fld input:focus{border-color:var(--ink)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:10px;color:var(--mute)}
+.stats b{display:block;font-size:14px;color:var(--ink);margin-top:2px}
+/* centre */
+.center{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0;min-height:0}
+.picker{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;width:100%;flex:none}
+.vbtn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font-size:11px;cursor:pointer;color:var(--ink);transition:all .15s}
+.vbtn:hover{border-color:var(--ink);transform:translateY(-1px)}
+.vbtn.active{background:var(--lime);border-color:var(--ink);font-weight:700;box-shadow:0 6px 20px rgba(198,255,0,.4)}
+.aspects{flex:none;display:flex;gap:4px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px}
+.aspects button{border:1px solid transparent;background:none;border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer}
+.aspects button.active{background:var(--ink);color:#fff}
+.stage{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;container-type:size}
+#frame{position:relative;flex:none;width:min(100cqw,100cqh*var(--ar,.5625));aspect-ratio:var(--ar-css,9 / 16);background:#fff;border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 1px 0 var(--line),0 8px 24px rgba(0,0,0,.06)}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--lime);border:1px solid var(--ink);font-weight:700;letter-spacing:.15em;font-size:13px;padding:10px 22px;border-radius:999px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:5}
+.controls{flex:none;width:100%;max-width:620px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 10px 8px 8px;display:flex;align-items:center;gap:12px}
+#playBtn{width:44px;height:44px;border-radius:50%;border:0;background:var(--ink);color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+#playBtn:disabled{opacity:.4;cursor:not-allowed}
+#timeDisplay{font-size:10px;min-width:128px;text-align:right;white-space:nowrap}
+#recordTimer{font-size:10px;font-weight:700;color:#FF3B30;min-width:0}
+.mode-list{display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--mute);line-height:1.5}
+.mode-list b{color:var(--ink)}
+@media(max-width:1000px){body{height:auto;min-height:100vh;overflow:auto;display:block}header{position:sticky;top:0}main{display:grid;grid-template-columns:1fr;padding:16px;height:auto}.col{overflow:visible}.center{order:-1}.stage{container-type:normal;flex:none}#frame{width:min(100%,420px)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">waveora</div>
+  <div id="analysis">drop audio to start</div>
+</header>
+
+<main>
+  <!-- LEFT -->
+  <div class="col">
+    <section class="card">
+      <div class="label">AUDIO SOURCE</div>
+      <div id="audioDrop" role="button" tabindex="0">
+        <input id="audioFile" type="file" accept="audio/*" hidden>
+        <b>TAP TO UPLOAD MP3 / WAV / M4A</b>
+        <small>or drop a file anywhere</small>
+      </div>
+      <div id="audioStatus">No audio — upload to enable visuals</div>
+    </section>
+    <section class="card">
+      <div class="label">EXPORT</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn" id="mp4Btn" type="button">EXPORT 4K MP4</button>
+        <button class="btn" id="pngBtn" type="button">SAVE PNG</button>
+        <p id="exportNote" style="font-size:10px;color:#9A9A9A;line-height:1.4">4K-sized MP4 export via FFmpeg.wasm. First export loads the encoder; keep this tab open while it processes.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- CENTRE: visualisers -->
+  <div class="center">
+    <div class="picker" id="picker"></div>
+    <div class="aspects" id="aspects">
+      <button data-aspect="1:1">1:1</button><button data-aspect="4:5">4:5</button><button data-aspect="9:16" class="active">9:16</button><button data-aspect="16:9">16:9</button>
+    </div>
+    <div class="stage">
+      <div id="frame"><canvas id="mainCanvas"></canvas><div id="toast"></div></div>
+    </div>
+    <div class="controls">
+      <button id="playBtn" disabled aria-label="Play"></button>
+      <input id="seek" type="range" min="0" max="1000" value="0" disabled>
+      <div id="timeDisplay">00:00.00 / 00:00.00</div>
+      <span id="recordTimer"></span>
+      
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="col">
+    <section class="card">
+      <div class="label">CONTROLS</div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div>
+          <div class="row"><span>SENSITIVITY</span><b id="sensVal" style="color:var(--ink)">1.0</b></div>
+          <input id="sensitivity" type="range" min="0.2" max="2.5" step="0.1" value="1" style="margin-top:8px">
+        </div>
+        <div>
+          <div class="row"><span>VOLUME</span><b id="volVal" style="color:var(--ink)">90%</b></div>
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="0.9" style="margin-top:8px">
+        </div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="label">VISUAL TEXT</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <label class="fld">NAME<input id="tName" value="cedania" maxlength="40"></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <label class="fld">BPM<input id="tBpm" value="102" maxlength="6"></label>
+          <label class="fld">KEY<input id="tKey" value="D" maxlength="6"></label>
+        </div>
+        <label class="fld">@HANDLE<input id="tHandle" value="@nikitaakira" maxlength="30"></label>
+      </div>
+    </section>
+    <section class="card">
+      <div class="label">TRACK</div>
+      <div class="stats">
+        <div>BPM<b id="bpmVal">—</b></div>
+        <div>DURATION<b id="durVal">—</b></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+(()=>{
+"use strict";
+const $=id=>document.getElementById(id);
+const canvas=$("mainCanvas"), frame=$("frame"), A=canvas.getContext("2d",{alpha:false});
+const el={audioDrop:$("audioDrop"),audioFile:$("audioFile"),audioStatus:$("audioStatus"),seek:$("seek"),timeDisplay:$("timeDisplay"),playBtn:$("playBtn"),mp4Btn:$("mp4Btn"),pngBtn:$("pngBtn"),recordTimer:$("recordTimer"),toast:$("toast"),analysis:$("analysis"),sens:$("sensitivity"),volume:$("volume")};
+const WT={name:"cedania",bpm:"102",key:"D",handle:"@nikitaakira",get info(){return `${this.bpm} BPM${this.key?" "+this.key:""}`}};
+const f=frame; // used by draw functions for size
+
+let ctx=null,buffer=null,source=null,analyser=null,gain=null,dest=null;
+let playing=false,startedAt=0,c=0,y=0,V=1,mode="REEL-PATCH",raf=0,recording=false,recorder=null,chunks=[],recTimer=null,recStart=0,toastT=0;
+const k={fieldHistory:[],patchSliders:[0.92,0.88,0.85],vectorHistory:[],loudnessHistory:[],waveHistory:[],campaignRot:0,paintInit:false};
+const ke=new Uint8Array(1024), me=new Uint8Array(1024).fill(128), we=me;
+
+const PLAY='<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.8a1 1 0 0 1 1.5-.86l9 5.2a1 1 0 0 1 0 1.72l-9 5.2A1 1 0 0 1 8 16.2V5.8Z"/></svg>';
+const PAUSE='<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+el.playBtn.innerHTML=PLAY;
+
+function status(t,err){el.audioStatus.textContent=t;el.audioStatus.classList.toggle("err",!!err)}
+function w(l){l=Math.max(0,l||0);const p=String(Math.floor(l/60)).padStart(2,"0"),O=String(Math.floor(l%60)).padStart(2,"0"),I=String(Math.floor(l%1*100)).padStart(2,"0");return `${p}:${O}.${I}`}
+
+/* ---------- audio ---------- */
+function initAudio(){
+  if(!ctx){
+    ctx=new (window.AudioContext||window.webkitAudioContext)();
+    analyser=ctx.createAnalyser();analyser.fftSize=2048;analyser.smoothingTimeConstant=.78;
+    gain=ctx.createGain();gain.gain.value=parseFloat(el.volume.value);
+    dest=ctx.createMediaStreamDestination();
+    analyser.connect(gain);gain.connect(ctx.destination);gain.connect(dest);
+  }
+  if(ctx.state==="suspended")ctx.resume();
+}
+function detectBpm(b){
+  const d=b.getChannelData(0),sr=b.sampleRate,win=Math.floor(sr*.1),e=[];
+  for(let i=0;i<d.length;i+=win){let s=0,n=0;for(let j=0;j<win&&i+j<d.length;j++){s+=d[i+j]*d[i+j];n++}e.push(Math.sqrt(s/Math.max(1,n)))}
+  let hits=0;for(let i=1;i<e.length-1;i++)if(e[i]>e[i-1]*1.3&&e[i]>e[i+1]*1.2&&e[i]>.02)hits++;
+  const bpm=Math.round(hits/b.duration*60*2);
+  return Math.min(180,Math.max(70,bpm||120));
+}
+async function loadFile(file){
+  try{
+    if(recording&&recorder&&recorder.state!=="inactive")recorder.stop();
+    initAudio();stopSource();
+    status(`Loading ${file.name} — ${(file.size/1048576).toFixed(2)} MB`);
+    const ab=await file.arrayBuffer();
+    buffer=await ctx.decodeAudioData(ab);
+    y=buffer.duration;c=0;playing=false;
+    k.fieldHistory=[];k.loudnessHistory=[];k.waveHistory=[];
+    const bpm=detectBpm(buffer);
+    el.analysis.textContent=`${bpm} BPM — ${w(y)}`;
+    $("bpmVal").textContent=bpm;if(!touched.has("bpm")){WT.bpm=String(bpm);$("tBpm").value=WT.bpm}$("durVal").textContent=w(y);
+    status(`Ready — ${file.name} — ${w(y)} — ${buffer.sampleRate}Hz`);
+    el.seek.disabled=false;el.playBtn.disabled=false;setPlayIcon();
+  }catch(e){status(`Decode failed: ${e.message}`,true)}
+}
+function stopSource(){
+  if(source){source.onended=null;try{source.stop()}catch{}try{source.disconnect()}catch{}source=null}
+}
+function play(){
+  if(!buffer)return;
+  initAudio();stopSource();
+  if(c>=y-.05)c=0;
+  const s=ctx.createBufferSource();s.buffer=buffer;s.connect(analyser);
+  s.onended=()=>{if(source===s&&playing){playing=false;c=0;source=null;setPlayIcon();if(recording&&recorder&&recorder.state!=="inactive")recorder.stop()}};
+  s.start(0,c);source=s;startedAt=ctx.currentTime-c;playing=true;setPlayIcon();
+}
+function pause(){
+  if(!playing)return;
+  c=ctx.currentTime-startedAt;stopSource();playing=false;setPlayIcon();
+}
+function setPlayIcon(){el.playBtn.innerHTML=playing?PAUSE:PLAY;el.playBtn.setAttribute("aria-label",playing?"Pause":"Play")}
+
+el.audioFile.addEventListener("change",e=>{const p=e.target.files?.[0];if(p)loadFile(p);e.target.value=""});
+el.audioDrop.addEventListener("click",()=>el.audioFile.click());
+el.audioDrop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();el.audioFile.click()}});
+el.audioDrop.addEventListener("dragenter",()=>el.audioDrop.classList.add("over"));
+el.audioDrop.addEventListener("dragleave",()=>el.audioDrop.classList.remove("over"));
+window.addEventListener("dragover",e=>e.preventDefault());
+window.addEventListener("drop",e=>{e.preventDefault();el.audioDrop.classList.remove("over");const p=e.dataTransfer?.files?.[0];if(p&&p.type.startsWith("audio/"))loadFile(p);else if(p)status("That doesn't look like an audio file",true)});
+el.playBtn.addEventListener("click",()=>{if(!buffer){status("Upload audio first",true);return}playing?pause():play()});
+el.seek.addEventListener("input",()=>{
+  if(!buffer)return;
+  c=parseFloat(el.seek.value)/1000*y;
+  if(playing){stopSource();playing=false;play()}
+  el.timeDisplay.textContent=`${w(c)} / ${w(y)}`;
+});
+el.volume.addEventListener("input",()=>{const v=parseFloat(el.volume.value);if(gain)gain.gain.value=v;$("volVal").textContent=Math.round(v*100)+"%"});
+el.sens.addEventListener("input",()=>{V=parseFloat(el.sens.value);$("sensVal").textContent=V.toFixed(1)});
+
+const FIELDS=[["tName","name"],["tBpm","bpm"],["tKey","key"],["tHandle","handle"]];
+const STORE="waveora.visualText.v1";
+let saved={};
+try{saved=JSON.parse(localStorage.getItem(STORE)||"{}")||{}}catch{saved={}}
+const touched=new Set(Object.keys(saved));            // fields the user has set themselves
+FIELDS.forEach(([id,key])=>{
+  if(typeof saved[key]==="string"){WT[key]=saved[key];$(id).value=saved[key]}
+  $(id).addEventListener("input",e=>{
+    let v=e.target.value.trim();
+    if(key==="handle"&&v&&!v.startsWith("@"))v="@"+v;
+    if(key==="name"&&!v)v="untitled";
+    WT[key]=v;touched.add(key);saved[key]=v;
+    try{localStorage.setItem(STORE,JSON.stringify(saved))}catch{}
+  });
+});
+/* ---------- canvas sizing ---------- */
+function resize(){
+  const r=frame.getBoundingClientRect();if(!r.width||!r.height)return;
+  const p=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=Math.floor(r.width*p);canvas.height=Math.floor(r.height*p);
+  A.setTransform(p,0,0,p,0,0);k.paintInit=false;
+}
+new ResizeObserver(resize).observe(frame);
+window.addEventListener("resize",resize);
+
+/* ---------- drawing helpers + visualisers ---------- */
+function or(l,p,O,I){if(!l){I(p,O);return}A.save(),A.beginPath(),A.rect(l.x,l.y,l.w,l.h),A.clip(),A.translate(l.x,l.y),I(l.w,l.h),A.restore()}
+function zu(l,p,O,I,m){A.beginPath(),A.moveTo(l+m,p),A.arcTo(l+O,p,l+O,p+I,m),A.arcTo(l+O,p+I,l,p+I,m),A.arcTo(l,p+I,l,p,m),A.arcTo(l,p,l+O,p,m),A.closePath()}
+function ll(l,p,O,I,m){let M=m?m.w:f.getBoundingClientRect().width,_=m?m.h:f.getBoundingClientRect().height;or(m,M,_,(P,X)=>{l.fillStyle="#E8E5DE",l.fillRect(0,0,P,X),l.fillStyle="#D9D6D0",l.fillRect(0,0,P,26),l.strokeStyle="#C8C5BF",l.lineWidth=1,l.beginPath(),l.moveTo(0,26.5),l.lineTo(P,26.5),l.stroke(),["#FF5F56","#FFBD2E","#27C93F"].forEach((T,G)=>{l.fillStyle=T,l.beginPath(),l.arc(12+G*16,13,5,0,Math.PI*2),l.fill(),l.strokeStyle="#00000022",l.stroke()}),l.fillStyle="#111",l.font='400 10px "JetBrains Mono", monospace',l.textAlign="center",l.fillText(`${WT.name} ${WT.bpm} ${WT.key}.pd — Pure Data`,P/2,17),l.textAlign="left";let re=p.slice(0,30).reduce((T,G)=>T+G,0)/30/255,ce=p.slice(80,200).reduce((T,G)=>T+G,0)/120/255,Ae=p.slice(400,700).reduce((T,G)=>T+G,0)/300/255,Q=(()=>{let T=0;for(let G=0;G<I.length;G++){let Z=(I[G]-128)/128;T+=Z*Z}return Math.sqrt(T/I.length)})();k.patchSliders[0]+=(0.85+re*0.4-k.patchSliders[0])*0.15,k.patchSliders[1]+=(0.78+ce*0.4-k.patchSliders[1])*0.15,k.patchSliders[2]+=(0.72+Ae*0.5-k.patchSliders[2])*0.15;function g(T,G,Z,ee,fe){l.fillStyle="#FFFFFF",l.strokeStyle="#111",l.lineWidth=1,l.fillRect(T,G,Z,ee),l.strokeRect(T,G,Z,ee),l.fillStyle="#111",l.fillRect(T+6,G-3,8,3),l.fillRect(T+Z-14,G+ee,8,3),l.fillStyle="#111",l.font='400 10px "JetBrains Mono"',l.fillText(fe,T+6,G+12)}function h(T,G,Z,ee,fe){l.fillStyle="#FFFFFF",l.strokeStyle="#111",l.lineWidth=1,l.fillRect(T,G,Z,ee),l.strokeRect(T,G,Z,ee),l.fillStyle="#111",l.font='700 11px "JetBrains Mono"',l.textAlign="right",l.fillText(fe,T+Z-6,G+12),l.textAlign="left"}function N(T,G,Z,ee,fe){l.fillStyle="#FFFFFF",l.strokeStyle="#111",l.lineWidth=1,l.fillRect(T,G,Z,ee),l.strokeRect(T,G,Z,ee);let Le=ee*fe;l.fillStyle="#111",l.fillRect(T,G+ee-Le,Z,Le),l.fillStyle="#E8E0D8",l.strokeStyle="#111",l.lineWidth=1,l.fillRect(T-2,G+ee-Le-4,Z+4,8),l.strokeRect(T-2,G+ee-Le-4,Z+4,8)}g(12,36,148,18,`[readsf~ ${WT.name}.wav]`),g(12,60,68,18,"[hip~ 30]"),g(12,82,72,18,"[lop~ 150]"),g(12,104,88,18,"[bp~ 1200 2]"),g(12,126,82,18,"[hip~ 5000]"),g(176,36,86,18,"[env~ 1024]"),g(176,60,86,18,"[env~ 1024]"),g(176,82,86,18,"[env~ 1024]"),h(176,106,46,16,(90+k.patchSliders[0]*10).toFixed(1)),h(228,106,46,16,(88+k.patchSliders[1]*10).toFixed(1)),h(280,106,46,16,(86+k.patchSliders[2]*10).toFixed(1)),N(188,128,12,56,k.patchSliders[0]),N(240,128,12,56,k.patchSliders[1]),N(292,128,12,56,k.patchSliders[2]),l.strokeStyle="#111",l.lineWidth=1,[[176,54,188,128],[176,78,240,128],[176,100,292,128]].forEach(([T,G,Z,ee])=>{l.beginPath(),l.moveTo(T+86,G+9),l.bezierCurveTo(T+100,G+20,Z,ee-10,Z+6,ee),l.stroke();let fe=Date.now()*0.001%1,Le=T+86+(Z-(T+86))*fe,Ce=G+9+(ee-(G+9))*fe;l.fillStyle="#111",l.beginPath(),l.arc(Le,Ce,2,0,Math.PI*2),l.fill()}),g(12,192,56,18,"[bonk~]"),["kick","snr","hat","note"].forEach((T,G)=>{let Z=80+G*58,ee=206,fe=[re,ce,Ae,Q][G]>0.45;g(Z,192,48,18,`[${T}]`),l.fillStyle=fe?"#111":"#FFFFFF",l.strokeStyle="#111",l.lineWidth=1.2,l.beginPath(),l.arc(Z+24,220,8,0,Math.PI*2),l.fill(),l.stroke()}),g(12,234,76,18,"[metro 429]"),g(94,234,58,18,"[t b b b b]"),g(12,258,78,18,"[sigmund~]"),h(94,258,58,16,`${(92+ce*4).toFixed(1)}`),l.fillStyle="#6B6B6B",l.font='400 8px "JetBrains Mono"',l.fillText("beat",96,282);let Y=12,q=292,ae=P-24,K=96;l.fillStyle="#FFFFFF",l.strokeStyle="#111",l.lineWidth=1.2,l.fillRect(Y,q,ae,K),l.strokeRect(Y,q,ae,K),l.fillStyle="#111",l.font='700 9px "JetBrains Mono"',l.fillText("array wave 1924 1924",Y+6,q+12),l.strokeStyle="#111",l.lineWidth=1.8,l.beginPath();for(let T=0;T<O.length;T++){let G=Y+T/O.length*ae,Z=q+18+(O[T]-128)/128*(K-28)*0.5+K*0.2;if(T===0)l.moveTo(G,Z);else l.lineTo(G,Z)}l.stroke();let ue=y?c/y:0.35;l.strokeStyle="#FF3B30",l.lineWidth=1,l.beginPath(),l.moveTo(Y+ae*ue,q),l.lineTo(Y+ae*ue,q+K),l.stroke();let L=12,b=398,pe=P-24,te=84;l.fillStyle="#FFFFFF",l.strokeStyle="#111",l.lineWidth=1.2,l.fillRect(L,b,pe,te),l.strokeRect(L,b,pe,te),l.fillStyle="#111",l.font='700 9px "JetBrains Mono"',l.fillText("array spectrum 24 24",L+6,b+12);let $=24,ie=(pe-12)/$;for(let T=0;T<$;T++){let Z=p[Math.floor(T/$*400)]/255*(te-22)*V;l.fillStyle="#111",l.fillRect(L+6+T*ie+1,b+te-Z-4,ie-2,Z)}l.fillStyle="#E8E5DE",l.fillRect(0,X-22,P,22),l.strokeStyle="#C8C5BF",l.beginPath(),l.moveTo(0,X-22.5),l.lineTo(P,X-22.5),l.stroke(),l.fillStyle="#111",l.font='400 10px "JetBrains Mono"',l.fillText(WT.info,12,X-7),l.fillStyle="#6B6B6B",l.font='400 10px "JetBrains Mono"',l.textAlign="right",l.fillText(`${w(c)} / ${w(y||13.7)} mono`,P-12,X-7),l.textAlign="left"})}
+function ul(l,p,O,I,m){let M=m?m.w:f.getBoundingClientRect().width,_=m?m.h:f.getBoundingClientRect().height;or(m,M,_,(P,X)=>{l.fillStyle="#F2F2F0",l.fillRect(0,0,P,X);let J=p.slice(0,30).reduce((x,le)=>x+le,0)/30/255,re=p.slice(80,200).reduce((x,le)=>x+le,0)/120/255,ce=p.slice(400,700).reduce((x,le)=>x+le,0)/300/255,Ae=(()=>{let x=0;for(let le=0;le<I.length;le++){let H=(I[le]-128)/128;x+=H*H}return Math.sqrt(x/I.length)})();if(p[0]!==void 0){if(k.fieldHistory.push(new Uint8Array(p.slice(0,256))),k.fieldHistory.length>160)k.fieldHistory.shift()}l.fillStyle="#111",l.font='700 20px "Space Grotesk", sans-serif',l.fillText(WT.name,16,28),l.fillStyle="#6B6B6B",l.font='400 11px "JetBrains Mono"',l.fillText(WT.info,16,44),l.fillStyle="#111",l.font='700 10px "JetBrains Mono"',l.fillText("WHAT YOU HEAR OVER TIME",16,68),l.strokeStyle="#111",l.lineWidth=1,l.beginPath(),l.moveTo(16,72),l.lineTo(P-16,72),l.stroke();let Q=54,g=78,h=P-Q-16,N=148;l.fillStyle="#9A9A9A",l.font='400 9px "JetBrains Mono"',["14k","4k","500","60Hz"].forEach((x,le)=>{let H=g+le*N/3.5;l.fillText(x,16,H+4)}),l.fillStyle="#E8E0D8",l.fillRect(Q,g,h,N),l.strokeStyle="#111",l.lineWidth=1,l.strokeRect(Q,g,h,N);let Y=k.fieldHistory,q=h/160;for(let x=0;x<Y.length;x++){let le=Y[x];if(!le)continue;for(let H=0;H<4;H++){let U=H*40,Or=0.2+le.slice(U,U+40).reduce((wn,cd)=>wn+cd,0)/40/255*0.8;l.fillStyle=`rgba(17,17,17,${Or})`,l.fillRect(Q+x*q,g+H*N/4,q+0.5,N/4)}}let ae=y?c/y:0.7,K=Q+h*ae;l.fillStyle="rgba(0,0,0,0.12)",l.fillRect(Q,g,K-Q,N),l.fillStyle="rgba(255,255,255,0.35)",l.fillRect(K,g,Q+h-K,N),l.strokeStyle="#FF3B30",l.lineWidth=2,l.beginPath(),l.moveTo(K,g),l.lineTo(K,g+N),l.stroke(),l.fillStyle="#FF3B30",l.font='700 9px "JetBrains Mono"',l.fillText("NOW",K+6,g+12),l.fillStyle="#6B6B6B",l.font='400 8px "JetBrains Mono"',l.fillText("past dark, now red 70%, next light",Q,g+N+12);let ue=g+N+28;l.fillStyle="#111",l.font='700 10px "JetBrains Mono"',l.fillText("ITS SOUND RIGHT NOW",16,ue),l.strokeStyle="#111",l.lineWidth=1,l.beginPath(),l.moveTo(16,ue+4),l.lineTo(P-16,ue+4),l.stroke();let L=16,b=ue+12,pe=P-32,te=132;l.fillStyle="#FFFFFF",l.strokeStyle="#111",l.lineWidth=1,l.fillRect(L,b,pe,te),l.strokeRect(L,b,pe,te),l.fillStyle="#6B6B6B",l.font='400 9px "JetBrains Mono"',l.fillText("noisy",L+4,b+te-6),l.fillText("tonal",L+pe-30,b+te-6),l.save(),l.translate(L+8,b+te/2),l.rotate(-Math.PI/2),l.fillText("darker",0,0),l.restore(),l.save(),l.translate(L+8,b+12),l.rotate(-Math.PI/2),l.fillText("brighter",0,0),l.restore();let $=L+pe*(0.2+re*0.6+ce*0.2),ie=b+te*(0.8-ce*0.6-J*0.1);if(k.vectorHistory.push({x:$,y:ie}),k.vectorHistory.length>28)k.vectorHistory.shift();l.fillStyle="#9A9A9A",k.vectorHistory.forEach((x,le)=>{let H=le/k.vectorHistory.length*0.6;l.globalAlpha=H,l.beginPath(),l.arc(x.x,x.y,2,0,Math.PI*2),l.fill()}),l.globalAlpha=1,l.strokeStyle="#111",l.lineWidth=1.2,l.beginPath(),k.vectorHistory.forEach((x,le)=>{if(le===0)l.moveTo(x.x,x.y);else l.lineTo(x.x,x.y)}),l.stroke(),l.fillStyle="#FF3B30",l.beginPath(),l.arc($,ie,3+Ae*18*V,0,Math.PI*2),l.fill(),l.strokeStyle="#111",l.lineWidth=1,l.stroke(),l.fillStyle="#6B6B6B",l.font='400 8px "JetBrains Mono"',l.fillText("the whole beat solid • last 2s dot • now sized loudness",L,b+te+12);let T=b+te+26;l.fillStyle="#111",l.font='700 10px "JetBrains Mono"',l.fillText("THE WHOLE BEAT",16,T),l.strokeStyle="#111",l.lineWidth=1,l.beginPath(),l.moveTo(16,T+4),l.lineTo(P-16,T+4),l.stroke();let G=16,Z=T+10,ee=P-32,fe=52;l.fillStyle="#FFFFFF",l.strokeStyle="#111",l.lineWidth=1,l.fillRect(G,Z,ee,fe),l.strokeRect(G,Z,ee,fe),l.strokeStyle="#111",l.lineWidth=1.2,l.beginPath();for(let x=0;x<I.length;x++){let le=G+x/I.length*ee,H=Z+fe/2+(I[x]-128)/128*fe*0.4;if(x===0)l.moveTo(le,H);else l.lineTo(le,H)}l.stroke();let Le=48,Ce=Math.max(G,Math.min(G+ee-Le,G+ee*ae-Le/2));l.strokeStyle="#FF3B30",l.lineWidth=1.5,l.strokeRect(Ce,Z+4,Le,fe-8),l.fillStyle="#FF3B30",l.font='400 8px "JetBrains Mono"',l.fillText(`${w(c)}`,G,Z+fe+10),l.textAlign="right",l.fillText(`${w(y||13.7)}`,G+ee,Z+fe+10),l.textAlign="left"})}
+function il(l,p,O,I,m){let M=m?m.w:f.getBoundingClientRect().width,_=m?m.h:f.getBoundingClientRect().height;or(m,M,_,(P,X)=>{l.fillStyle="#0A0A0F",l.fillRect(0,0,P,X);let J=p.slice(0,30).reduce(($,ie)=>$+ie,0)/30/255,re=p.slice(80,200).reduce(($,ie)=>$+ie,0)/120/255,ce=p.slice(400,700).reduce(($,ie)=>$+ie,0)/300/255,Ae=(()=>{let $=0;for(let ie=0;ie<I.length;ie++){let T=(I[ie]-128)/128;$+=T*T}return Math.sqrt($/I.length)})();l.fillStyle="#FFFFFF",l.font='400 20px "JetBrains Mono", monospace',l.fillText(WT.name,16,28),l.fillStyle="#6B6B6B",l.font='400 10px "JetBrains Mono"',l.fillText(WT.info,16,44);let Q=P/2,g=X*0.52,h=Math.min(P,X)*0.34;l.strokeStyle="#FFFFFF",l.lineWidth=1,l.beginPath(),l.arc(Q,g,h,0,Math.PI*2),l.stroke(),l.strokeStyle="#FFFFFF66",l.lineWidth=1,l.setLineDash([3,4]),l.beginPath(),l.arc(Q,g,h*0.62,0,Math.PI*2),l.stroke(),l.setLineDash([]),l.strokeStyle="#FFFFFF44",l.lineWidth=0.8,l.setLineDash([2,6]),l.beginPath(),l.moveTo(Q,g),l.lineTo(Q,g-h),l.stroke(),l.beginPath(),l.moveTo(Q,g),l.lineTo(Q+Math.cos(120*Math.PI/180)*h,g+Math.sin(120*Math.PI/180)*h),l.stroke(),l.beginPath(),l.moveTo(Q,g),l.lineTo(Q+Math.cos(60*Math.PI/180)*h,g+Math.sin(60*Math.PI/180)*h),l.stroke(),l.setLineDash([]),l.fillStyle="#FFFFFF",l.font='700 11px "JetBrains Mono"',l.fillText("M",Q-6,g-h-8),l.fillText("L",Q+Math.cos(120*Math.PI/180)*(h+14)-6,g+Math.sin(120*Math.PI/180)*(h+14)),l.fillText("R",Q+Math.cos(60*Math.PI/180)*(h+14)-6,g+Math.sin(60*Math.PI/180)*(h+14)),l.fillStyle="#6B6B6B",l.font='400 9px "JetBrains Mono"',l.fillText("top",Q-10,g-h+10),l.fillText("top-left",Q+Math.cos(120*Math.PI/180)*(h-18)-20,g+Math.sin(120*Math.PI/180)*(h-18)),l.fillText("top-right",Q+Math.cos(60*Math.PI/180)*(h-18)-10,g+Math.sin(60*Math.PI/180)*(h-18));let N=h*0.9,Y=h*0.7,q=Q-N/2,ae=g-Y/2;l.save(),l.beginPath(),l.rect(q,ae,N,Y),l.clip();for(let $=0;$<90;$++){let ie=q+$/90*N,T=Math.floor($/90*I.length),G=(I[T]-128)/128*18*V,Z=ie+G+Math.sin(Date.now()*0.001+$*0.2)*2,ee=ae+6,fe=ae+Y-6,Le=0.25+p[$%p.length]/255*0.75;l.strokeStyle=`rgba(124,248,232,${Le})`,l.lineWidth=0.9+p[$%p.length]/255*1.6,l.beginPath(),l.moveTo(Z,ee),l.lineTo(Z+Math.sin($)*4,fe),l.stroke()}l.restore();let K=X-82;l.fillStyle="#FFFFFF",l.font='700 9px "JetBrains Mono"',l.fillText("CORRELATION",16,K),l.fillStyle="#6B6B6B",l.font='400 8px "JetBrains Mono"',l.fillText("-1",16,K+18),l.fillText("0",P/2-4,K+18),l.fillText("+1",P-22,K+18);let ue=P-32,L=6;l.fillStyle="#1A1A2A",l.fillRect(16,K+22,ue,L),l.strokeStyle="#333",l.strokeRect(16,K+22,ue,L);let b=0.75+re*0.2+J*0.05,pe=16+ue*((b+1)/2);l.fillStyle="#3BB6E8",l.fillRect(pe-2,K+18,4,14),l.fillStyle="#FFFFFF",l.font='400 8px "JetBrains Mono"',l.fillText(b.toFixed(2),pe-12,K+42);let te=K+48;l.fillStyle="#FFFFFF",l.font='700 9px "JetBrains Mono"',l.fillText("L",16,te+6),l.fillText("R",16,te+24),["L","R"].forEach(($,ie)=>{let T=te+ie*18,G=P-70,Z=32;l.fillStyle="#1A1A2A",l.fillRect(32,T,G,8),l.strokeStyle="#333",l.strokeRect(32,T,G,8);let fe=G*(0.2+(ie===0?J:ce)*0.8)*V;l.fillStyle="#3BB6E8",l.fillRect(32,T,fe,8),l.fillStyle="#FFFFFF",l.fillRect(32+fe-1,T-2,2,12)}),l.fillStyle="#6B6B6B",l.font='400 8px "JetBrains Mono"',l.fillText("-48",32,te+42),l.fillText("0 dB",P-32,te+42),l.fillStyle="#FFFFFF",l.font='400 10px "JetBrains Mono"',l.textAlign="right",l.fillText(WT.handle,P-16,X-14),l.textAlign="left"})}
+function td(l,p,O,I,m){let M=m?m.w:f.getBoundingClientRect().width,_=m?m.h:f.getBoundingClientRect().height;or(m,M,_,(P,X)=>{l.fillStyle="#080A08",l.fillRect(0,0,P,X);let J=p.slice(0,40).reduce((Y,q)=>Y+q,0)/40/255,re=p.slice(400,700).reduce((Y,q)=>Y+q,0)/300/255;l.fillStyle="#FFFFFF",l.font='700 20px "JetBrains Mono", monospace',l.fillText(WT.name,16,28),l.fillStyle="#6B6B6B",l.font='400 10px "JetBrains Mono"',l.fillText(WT.info,16,44),l.fillStyle="#FFFFFF66",l.font='400 9px "JetBrains Mono"',l.fillText("THIS",16,64),l.textAlign="right",l.fillText("LP 150 Hz",P-16,64),l.textAlign="left";let ce=P*0.08,Ae=P-ce*2,Q=X*0.52,g=ce,h=X*0.5-Q/2+8;l.fillStyle="#0E120E",l.fillRect(g,h,Ae,Q),l.strokeStyle="#222",l.lineWidth=0.8;for(let Y=0;Y<=8;Y++){let q=g+Y/8*Ae;l.beginPath(),l.moveTo(q,h),l.lineTo(q,h+Q),l.stroke();let ae=h+Y/8*Q;l.beginPath(),l.moveTo(g,ae),l.lineTo(g+Ae,ae),l.stroke()}l.strokeStyle="#333",l.lineWidth=1,l.beginPath(),l.moveTo(g,h+Q/2),l.lineTo(g+Ae,h+Q/2),l.stroke(),l.beginPath(),l.moveTo(g+Ae/2,h),l.lineTo(g+Ae/2,h+Q),l.stroke(),l.save(),l.shadowColor="#D6FF00",l.shadowBlur=18*V,l.strokeStyle="#D6FF00",l.lineWidth=2.6+re*2.2,l.beginPath();let N=8;for(let Y=0;Y<Ae;Y++){let q=Y/Ae,ae=Math.floor(q*I.length),K=Math.sin(q*Math.PI*2*N)*0.7,ue=(I[ae]-128)/128,L=h+Q/2+(K*0.55+ue*0.35*V)*Q*0.42*(0.6+J*0.8);if(Y===0)l.moveTo(g+Y,L);else l.lineTo(g+Y,L)}l.stroke(),l.shadowBlur=0,l.strokeStyle="#E8FF9A",l.lineWidth=0.9,l.beginPath();for(let Y=0;Y<Ae;Y++){let q=Y/Ae,ae=Math.floor(q*I.length),K=Math.sin(q*Math.PI*2*N)*0.7,ue=(I[ae]-128)/128,L=h+Q/2+(K*0.55+ue*0.35*V)*Q*0.42*(0.6+J*0.8);if(Y===0)l.moveTo(g+Y,L);else l.lineTo(g+Y,L)}l.stroke(),l.restore(),l.fillStyle="#6B6B6B",l.font='400 9px "JetBrains Mono"',l.fillText("5.3 ms/div",g,h+Q+14),l.textAlign="right",l.fillText("0.03 V/div",g+Ae,h+Q+14),l.textAlign="left",l.fillStyle="#FFFFFF",l.font='400 10px "JetBrains Mono"',l.textAlign="right",l.fillText(WT.handle,P-16,X-14),l.textAlign="left"})}
+function ld(l,p,O,I,m){let M=m?m.w:f.getBoundingClientRect().width,_=m?m.h:f.getBoundingClientRect().height;or(m,M,_,(P,X)=>{l.fillStyle="#0A0A0A",l.fillRect(0,0,P,X);let J=p.slice(0,30).reduce((U,se)=>U+se,0)/30/255,re=p.slice(80,200).reduce((U,se)=>U+se,0)/120/255,ce=p.slice(400,700).reduce((U,se)=>U+se,0)/300/255,Ae=y?c/y:Date.now()*0.0001%1;k.campaignRot+=0.01+re*0.04,l.fillStyle="#FFFFFF",l.font='700 10px "JetBrains Mono"',l.fillText(`${WT.handle.replace(/^@/,"").toUpperCase()} — ${WT.name.toUpperCase()}  ${WT.info}`,12,18);let Q=X*0.36,g=X*0.28,h=X*0.28,N=8,Y=P*0.5-N*1.5,q=N,ae=28;l.fillStyle="#7B4DFF",l.fillRect(q,ae,Y,Q),l.strokeStyle="#FFFFFF22",l.lineWidth=0.8;let K=q+Y/2,ue=ae+Q/2,L=Math.min(Y,Q)*0.48;for(let U=6;U<L;U+=8+J*6)l.beginPath(),l.arc(K,ue,U+Math.sin(Date.now()*0.001+U)*1.5,0,Math.PI*2),l.stroke();l.strokeStyle="#FFFFFF",l.lineWidth=1.5,l.beginPath(),l.moveTo(K,ue),l.lineTo(K+Math.cos(Ae*Math.PI*2)*L,ue+Math.sin(Ae*Math.PI*2)*L),l.stroke(),l.fillStyle="#FFFFFF",l.beginPath(),l.arc(K,ue,3,0,Math.PI*2),l.fill(),l.fillStyle="#FFFFFF",l.font='400 8px "JetBrains Mono"',l.fillText("GROOVE",q+6,ae+12);let b=P*0.5+N*0.5,pe=P*0.5-N*1.5;l.fillStyle="#FF4D1A",l.fillRect(b,ae,pe,Q);let te=b+pe/2,$=ae+Q/2,ie=Math.min(pe,Q)*0.42;l.strokeStyle="#7CF8E8",l.lineWidth=3,l.beginPath(),l.arc(te,$,ie+2,0,Math.PI*2),l.stroke(),l.strokeStyle="#00000033",l.lineWidth=0.6;for(let U=ie*0.3;U<ie;U+=6)l.beginPath(),l.arc(te,$,U,0,Math.PI*2),l.stroke();l.fillStyle="#111",l.beginPath(),l.arc(te,$,ie*0.38,0,Math.PI*2),l.fill(),l.fillStyle="#FFFFFF",l.font='700 8px "JetBrains Mono"',l.textAlign="center",l.fillText(WT.handle.replace(/^@/,"").toUpperCase(),te,$-4),l.font='400 7px "JetBrains Mono"',l.fillText("A",te,$+8),l.textAlign="left",l.save(),l.translate(te+ie*0.6,$-ie*0.2),l.rotate(k.campaignRot*0.2+ce),l.fillStyle="#FFFFFF",l.fillRect(0,-1,18,2),l.beginPath(),l.moveTo(18,0),l.lineTo(12,-4),l.lineTo(12,4),l.fill(),l.restore();let T=ae+Q+N,G=P*0.52-N;l.fillStyle="#141414",l.fillRect(N,T,G,g),l.fillStyle="#FFFFFF",l.font='700 8px "JetBrains Mono"',l.fillText("GROOVE SPECTRUM  FLAT  HALFTONE",N+6,T+12);let Z=24,ee=(G-12)/Z;for(let U=0;U<Z;U++){let Or=p[Math.floor(U/Z*400)]/255*(g-22)*V,wn=U===2||U===3;l.fillStyle=wn?"#FF6B2B":"#D4AF37",l.fillRect(N+6+U*ee,T+g-Or-4,ee-1,Or)}l.strokeStyle="#FF6B2B",l.lineWidth=1.2,l.strokeRect(N+6+2*ee,T+16,ee*2+2,g-22),l.fillStyle="#FF6B2B",l.font='400 6px "JetBrains Mono"',l.fillText(WT.name,N+6+2*ee+2,T+14);let fe=N+G+N,Le=P-fe-N;l.fillStyle="#000",l.fillRect(fe,T,Le,g);for(let U=0;U<4;U++)for(let se=0;se<7;se++){let wn=1.2+p[(se*7+U)%200]/255*2.4*V;l.fillStyle="#FFFFFF",l.beginPath(),l.arc(fe+8+se*(Le-16)/7,T+16+U*(g-24)/4,wn,0,Math.PI*2),l.fill()}l.fillStyle="#FFFFFF",l.font='400 9px "JetBrains Mono"',l.fillText(WT.name,fe+6,T+g-6);let Ce=T+g+N,x=P*0.5-N;l.fillStyle="#FFFFFF",l.fillRect(N,Ce,x,h),l.fillStyle="#111",l.font='700 12px "Space Grotesk", sans-serif',l.fillText("SIDE A",N+8,Ce+18),l.font='400 10px "JetBrains Mono"',l.fillText(`A1 ${WT.name}`,N+8,Ce+32),l.fillStyle="#6B6B6B",l.font='400 7px "JetBrains Mono"',l.fillText("INNER PRINTED",N+8,Ce+44),l.strokeStyle="#111",l.lineWidth=0.8,l.beginPath(),l.arc(N+x-20,Ce+20,12,0,Math.PI*2),l.stroke();let le=P*0.5+N*0.5,H=P*0.5-N*1.5;l.fillStyle="#111",l.fillRect(le,Ce,H,h),l.fillStyle="#FFFFFF",l.font='400 7px "JetBrains Mono"',l.fillText("Written and produced by",le+6,Ce+14),l.fillText(WT.handle.replace(/^@/,""),le+6,Ce+22),l.fillStyle="#9A9A9A",l.fillText(WT.info,le+6,Ce+32),l.fillText("Loudness -14.1 LUFS",le+6,Ce+42),l.fillText("True peak -1.0 dBTP",le+6,Ce+52),l.fillStyle="#FFFFFF";for(let U=0;U<18;U++){let se=Math.random()>0.5?1:2;l.fillRect(le+H-26+U*1.2,Ce+12,se,28)}l.strokeStyle="#222",l.lineWidth=1,l.strokeRect(0.5,0.5,P-1,X-1)})}
+function ud(l,p,O,I,m){let M=m?m.w:f.getBoundingClientRect().width,_=m?m.h:f.getBoundingClientRect().height;or(m,M,_,(P,X)=>{l.fillStyle="#0A0A0A",l.fillRect(0,0,P,X);let J=p.slice(0,30).reduce((H,U)=>H+U,0)/30/255,re=p.slice(80,200).reduce((H,U)=>H+U,0)/120/255,ce=p.slice(400,700).reduce((H,U)=>H+U,0)/300/255,Ae=(()=>{let H=0;for(let U=0;U<I.length;U++){let se=(I[U]-128)/128;H+=se*se}return Math.sqrt(H/I.length)})(),Q=y?c/y:0.5;l.fillStyle="#FFFFFF",l.font='400 18px "JetBrains Mono", monospace',l.fillText(WT.name,12,24),l.fillStyle="#6B6B6B",l.font='400 10px "JetBrains Mono"',l.fillText(WT.info,12,38);let g=P*0.75,h=(P-g)/2,N=52,Y=12,q=X*0.28;l.fillStyle="#141414",l.fillRect(h,N,g,q),l.strokeStyle="#222",l.lineWidth=1,l.strokeRect(h,N,g,q),l.fillStyle="#FFFFFF",l.font='700 8px "JetBrains Mono"',l.fillText("WAVE",h+6,N+10),l.fillStyle="#3A3F1A",l.beginPath(),l.moveTo(h,N+q);for(let H=0;H<g;H++){let U=Math.floor(H/g*I.length),se=N+q*0.5+(I[U]-128)/128*q*0.3+6;if(H===0)l.lineTo(h+H,se);else l.lineTo(h+H,se)}l.lineTo(h+g,N+q),l.closePath(),l.fill(),l.fillStyle="#D6FF00",l.beginPath(),l.moveTo(h,N+q);for(let H=0;H<g;H++){let U=Math.floor(H/g*I.length),se=N+q*0.5+(I[U]-128)/128*q*0.35*V*(0.6+J);if(H===0)l.lineTo(h+H,se);else l.lineTo(h+H,se)}l.lineTo(h+g,N+q),l.closePath(),l.fill(),l.strokeStyle="#FFFFFF",l.lineWidth=1.2,l.beginPath(),l.moveTo(h+g*Q,N),l.lineTo(h+g*Q,N+q),l.stroke(),N+=q+Y;let ae=X*0.14;l.fillStyle="#141414",l.fillRect(h,N,g,ae),l.strokeStyle="#222",l.strokeRect(h,N,g,ae),l.fillStyle="#FFFFFF",l.font='700 8px "JetBrains Mono"',l.fillText("PHASE",h+6,N+10),l.fillStyle="#6B6B6B",l.font='400 7px "JetBrains Mono"',l.fillText("+0.5U",h+g-30,N+10);let K=Math.min(g,ae)-20,ue=h+g*0.5-K/2,L=N+14;l.strokeStyle="#333",l.strokeRect(ue,L,K,K-4);let b=ue+K/2+Math.cos(Date.now()*0.001+re*2)*K*0.2,pe=L+(K-4)/2+Math.sin(Date.now()*0.0015+ce)*K*0.18;l.fillStyle="#D6FF00",l.shadowColor="#D6FF00",l.shadowBlur=12,l.beginPath(),l.arc(b,pe,6+Ae*10,0,Math.PI*2),l.fill(),l.shadowBlur=0,N+=ae+Y;let te=X*0.18;l.fillStyle="#141414",l.fillRect(h,N,g,te),l.strokeStyle="#222",l.strokeRect(h,N,g,te),l.fillStyle="#FFFFFF",l.font='700 8px "JetBrains Mono"',l.fillText("BANDS",h+6,N+10);let $=14,ie=4,T=(g-12)/$,G=(te-18)/ie;for(let H=0;H<$;H++){let U=p[Math.floor(H/$*300)]/255;for(let se=0;se<ie;se++)if(se<U*ie*V){let wn=G*0.8*(0.5+U*0.5);l.fillStyle="#D6FF00",l.fillRect(h+6+H*T+1,N+14+se*G+(G-wn),T-2,wn)}}N+=te+Y;let Z=X*0.22;l.fillStyle="#141414",l.fillRect(h,N,g,Z),l.strokeStyle="#222",l.strokeRect(h,N,g,Z);let ee=-18.9+Ae*2,fe=-21.9+re*3,Le=-5.7+ce*2,Ce=3.7+J*2;if(l.fillStyle="#FFFFFF",l.font='700 14px "JetBrains Mono"',l.fillText(ee.toFixed(1),h+6,N+22),l.fillStyle="#6B6B6B",l.font='400 7px "JetBrains Mono"',l.fillText("I",h+48,N+22),l.fillStyle="#FFFFFF",l.font='700 10px "JetBrains Mono"',l.fillText(fe.toFixed(1),h+60,N+22),l.fillStyle="#6B6B6B",l.font='400 7px "JetBrains Mono"',l.fillText("S",h+90,N+22),l.fillStyle="#FFFFFF",l.font='700 10px "JetBrains Mono"',l.fillText(Le.toFixed(1),h+102,N+22),l.fillStyle="#6B6B6B",l.font='400 7px "JetBrains Mono"',l.fillText("TP",h+130,N+22),l.fillStyle="#FFFFFF",l.font='700 10px "JetBrains Mono"',l.fillText(Ce.toFixed(1),h+148,N+22),l.fillStyle="#6B6B6B",l.font='400 7px "JetBrains Mono"',l.fillText("LRA",h+170,N+22),p[0]!==void 0){if(k.loudnessHistory.push(Ae),k.loudnessHistory.length>g)k.loudnessHistory.shift()}let x=N+28,le=Z-34;l.fillStyle="#1A1A0A",l.fillRect(h+4,x,g-8,le),l.fillStyle="#D6FF00";for(let H=0;H<k.loudnessHistory.length;H++){let se=k.loudnessHistory[H]*le*V;l.fillRect(h+4+H,x+le-se,1,se)}l.strokeStyle="#FFFFFF",l.lineWidth=1,l.beginPath(),l.moveTo(h+4+(g-8)*Q,x),l.lineTo(h+4+(g-8)*Q,x+le),l.stroke(),l.fillStyle="#6B6B6B",l.font='400 9px "JetBrains Mono"',l.textAlign="right",l.fillText(WT.handle,P-12,X-10),l.textAlign="left"})}
+function id(l,p,O,I,m){let M=m?m.w:f.getBoundingClientRect().width,_=m?m.h:f.getBoundingClientRect().height;or(m,M,_,(P,X)=>{l.fillStyle="#F5F3EF",l.fillRect(0,0,P,X);let J=(()=>{let L=0;for(let b=0;b<I.length;b++){let pe=(I[b]-128)/128;L+=pe*pe}return Math.sqrt(L/I.length)})(),re=p.slice(80,200).reduce((L,b)=>L+b,0)/120/255,ce=p.slice(400,700).reduce((L,b)=>L+b,0)/300/255,Ae=y?c/y:0.18;l.fillStyle="#111",l.font='700 20px "JetBrains Mono", monospace',l.fillText(WT.name,16,28),l.fillStyle="#9A9A9A",l.font='400 10px "JetBrains Mono"',l.fillText(WT.info,16,44);let Q=-18.9+(J-0.3)*4+re*1.2;l.fillStyle="#111",l.font='700 56px "Space Grotesk", sans-serif',l.fillText(Q.toFixed(1),16,96),l.fillStyle="#6B6B6B",l.font='400 10px "JetBrains Mono"',l.fillText("LUFS INTEGRATED",16,112),l.fillStyle="#9A9A9A",l.font='400 9px "JetBrains Mono"',l.textAlign="right",l.fillText("TARGET -14",P-16,60),l.fillText(`-18.7 vs ${Q.toFixed(1)}`,P-16,74),l.fillText("-18.7 diff",P-16,88),l.textAlign="left";let g=16,h=P-32,N=14,Y=22,q=132;[{label:"MOMENTARY",val:-18.7+J*2+ce,color:"#FF6B2B"},{label:"SHORT TERM",val:-21.6+re*3,color:"#FF6B2B"},{label:"INTEGRATED",val:Q,color:"#111"},{label:"TRUE PEAK",val:-5.7+ce*2+J,color:"#FF6B2B"}].forEach((L)=>{l.fillStyle="#6B6B6B",l.font='400 8px "JetBrains Mono"',l.fillText(L.label,g,q-2),l.fillStyle="#111",l.font='400 8px "JetBrains Mono"',l.textAlign="right",l.fillText(L.val.toFixed(1),g+h,q-2),l.textAlign="left",l.fillStyle="#E8E0D8",l.fillRect(g,q,h,N);let b=h*Math.max(0,Math.min(1,(L.val+40)/40))*V;l.fillStyle=L.color,l.fillRect(g,q,b,N),l.strokeStyle="#FFFFFF88",l.lineWidth=1,l.beginPath(),l.moveTo(g+h*0.65,q),l.lineTo(g+h*0.65,q+N),l.stroke(),q+=Y+4});let K=q+8,ue=X-K-28;if(l.fillStyle="#FFFFFF",l.strokeStyle="#E8E0D8",l.lineWidth=1,l.fillRect(g,K,h,ue),l.strokeRect(g,K,h,ue),p[0]!==void 0){if(k.waveHistory.push(new Uint8Array(I.slice(0,128))),k.waveHistory.length>h)k.waveHistory.shift()}for(let L=0;L<k.waveHistory.length;L++){let b=k.waveHistory[L];if(!b)continue;let te=b.reduce(($,ie)=>$+ie,0)/b.length/255*ue*0.4*V;l.fillStyle="#DDD7CE",l.fillRect(g+L,K+ue-te,1,te)}l.strokeStyle="#111",l.lineWidth=1.2,l.beginPath();for(let L=0;L<I.length;L++){let b=g+L/I.length*h,pe=K+ue/2+(I[L]-128)/128*ue*0.35*V;if(L===0)l.moveTo(b,pe);else l.lineTo(b,pe)}l.stroke(),l.strokeStyle="#BBB",l.lineWidth=0.8,l.setLineDash([3,3]),l.beginPath();for(let L=0;L<k.loudnessHistory.length;L++){let b=g+L/k.loudnessHistory.length*h,pe=K+ue*0.5-k.loudnessHistory[L]*ue*0.3;if(L===0)l.moveTo(b,pe);else l.lineTo(b,pe)}l.stroke(),l.setLineDash([]),l.strokeStyle="#FF3B30",l.lineWidth=1.5,l.beginPath(),l.moveTo(g+h*Ae,K),l.lineTo(g+h*Ae,K+ue),l.stroke(),l.fillStyle="#FF3B30",l.font='700 8px "JetBrains Mono"',l.fillText("NOW",g+h*Ae+4,K+10),l.fillStyle="#F5F3EF",l.fillRect(0,X-22,P,22),l.strokeStyle="#E8E0D8",l.beginPath(),l.moveTo(0,X-22.5),l.lineTo(P,X-22.5),l.stroke(),l.fillStyle="#6B6B6B",l.font='400 8px "JetBrains Mono"',l.fillText("EBU R128  400ms  75%  4x OVERSAMPLED PEAK",12,X-8),l.fillStyle="#111",l.font='400 9px "JetBrains Mono"',l.textAlign="right",l.fillText(`${w(c)}/${w(y||12)}  ${WT.handle}`,P-12,X-8),l.textAlign="left"})}
+
+function paint(l,p,O){
+  const n=Math.floor(2+O.bass*6*V);
+  for(let i=0;i<n;i++){
+    const x=l*.5+(Math.random()-.5)*l*.6,yy=p*.5+(Math.random()-.5)*p*.6,r=4+O.bass*40;
+    A.fillStyle=O.bass>.6?"#111":"#FB923C";A.globalAlpha=.85;A.beginPath();A.arc(x,yy,r,0,Math.PI*2);A.fill();
+  }
+  A.globalAlpha=1;
+}
+function bars(l,p){
+  A.fillStyle="#FFFFFF";A.fillRect(0,0,l,p);
+  const n=48,bw=l/n;
+  for(let i=0;i<n;i++){const m=ke[i*4]/255;A.fillStyle=i%2===0?"#111":"#E8E0D8";const h=Math.min(p,m*p*.9*V);A.fillRect(i*bw+1,p-h,bw-2,h)}
+}
+function wave(l,p){
+  A.fillStyle="#FFFFFF";A.fillRect(0,0,l,p);
+  A.strokeStyle="#111";A.lineWidth=1.4;A.beginPath();
+  for(let i=0;i<me.length;i++){const x=i/me.length*l,yy=p*.5+(me[i]-128)/128*p*.4*V;i===0?A.moveTo(x,yy):A.lineTo(x,yy)}
+  A.stroke();
+}
+
+const VIS=[
+  ["REEL-PATCH","PATCH",(l,p,O)=>ll(A,ke,we,me,O)],
+  ["REEL-FIELD","FIELD",(l,p,O)=>ul(A,ke,we,me,O)],
+  ["REEL-VECTOR","VECTOR",(l,p,O)=>il(A,ke,we,me,O)],
+  ["REEL-SCOPE","SCOPE",(l,p,O)=>td(A,ke,we,me,O)],
+  ["REEL-CAMPAIGN","CAMPAIGN",(l,p,O)=>ld(A,ke,we,me,O)],
+  ["REEL-ORACLE","ORACLE",(l,p,O)=>ud(A,ke,we,me,O)],
+  ["REEL-LOUDNESS","LOUDNESS",(l,p,O)=>id(A,ke,we,me,O)],
+];
+const PAGE_BG={"REEL-PATCH":"#F7F5F0","REEL-FIELD":"#EDE8E1","REEL-VECTOR":"#050508","REEL-SCOPE":"#040604","REEL-CAMPAIGN":"#050505","REEL-ORACLE":"#080808","REEL-LOUDNESS":"#EFECE6"};
+const LIGHT=["REEL-PATCH","REEL-FIELD","REEL-LOUDNESS"];
+const SIMPLE=[["PAINT","PAINT"],["BARS","BARS"],["WAVE","WAVE"]];
+
+const picker=$("picker");
+[...VIS.map(v=>[v[0],v[1]]),...SIMPLE].forEach(([id,label])=>{
+  const b=document.createElement("button");b.className="vbtn";b.dataset.mode=id;b.textContent=label;
+  b.addEventListener("click",()=>setMode(id));picker.appendChild(b);
+});
+function setMode(m){
+  mode=m;
+  picker.querySelectorAll(".vbtn").forEach(b=>b.classList.toggle("active",b.dataset.mode===m));
+  const label=(VIS.find(v=>v[0]===m)||SIMPLE.find(v=>v[0]===m)||[m,m])[1];
+  el.toast.textContent=label;el.toast.style.opacity="1";clearTimeout(toastT);toastT=setTimeout(()=>el.toast.style.opacity="0",1200);
+  if(m==="PAINT")k.paintInit=false;
+}
+function setAspect(a){
+  const [x,yv]=a.split(":").map(Number);
+  frame.style.setProperty("--ar",x/yv);frame.style.setProperty("--ar-css",`${x} / ${yv}`);
+  $("aspects").querySelectorAll("button").forEach(b=>b.classList.toggle("active",b.dataset.aspect===a));
+  requestAnimationFrame(resize);
+}
+$("aspects").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>setAspect(b.dataset.aspect)));
+
+/* ---------- analysis ---------- */
+function analyse(){
+  if(!analyser||!playing){
+    // decay to silence so visuals settle instead of freezing
+    for(let i=0;i<ke.length;i++)ke[i]=ke[i]*.9|0;
+    for(let i=0;i<me.length;i++)me[i]=128+((me[i]-128)*.9|0);
+  }else{analyser.getByteFrequencyData(ke);analyser.getByteTimeDomainData(me)}
+  const avg=(a,b,n)=>{let s=0;for(let i=a;i<b;i++)s+=ke[i];return s/(b-a)/255};
+  return {bass:avg(0,40),mid:avg(120,300),high:avg(500,800)};
+}
+
+/* ---------- main loop ---------- */
+function frameLoop(){
+  raf=requestAnimationFrame(frameLoop);
+  const r=frame.getBoundingClientRect(),W=r.width,H=r.height;if(!W||!H)return;
+  const O=analyse();
+  if(playing&&ctx){
+    c=ctx.currentTime-startedAt;
+    if(c>=y){c=y}
+    el.timeDisplay.textContent=`${w(c)} / ${w(y)}`;
+    el.seek.value=String(Math.round(c/y*1000));
+  }
+  try{
+    const S=560;                                  // virtual square every visual is designed in
+    const side=Math.min(W,H)*0.92, sc=side/S;      // fit the square inside the frame
+    const x=(W-side)/2, yy=(H-side)/2;
+    const vis=VIS.find(v=>v[0]===mode);
+    const light=!vis||LIGHT.includes(mode);
+    const bg=vis?(PAGE_BG[mode]||"#F7F5F0"):"#F7F5F0";
+    const r=16*sc;
+    const clipSquare=()=>{zu(0,0,S,S,16)};
+    if(mode!=="PAINT"||!k.paintInit){A.fillStyle=bg;A.fillRect(0,0,W,H)}
+    if(vis){
+      A.save();A.translate(x,yy);A.scale(sc,sc);
+      if(light){A.shadowColor="rgba(0,0,0,.14)";A.shadowBlur=28/1;A.shadowOffsetY=12}
+      clipSquare();A.fillStyle="#FFFFFF";if(!light)A.fillStyle="#0A0A0A";A.fill();A.restore();
+      A.save();A.translate(x,yy);A.scale(sc,sc);clipSquare();A.clip();
+      vis[2](S,S,{x:0,y:0,w:S,h:S});
+      A.restore();
+      A.save();A.translate(x,yy);A.scale(sc,sc);clipSquare();A.strokeStyle=light?"#E8E0D8":"#222";A.lineWidth=1/sc;A.stroke();A.restore();
+    }else{
+      A.save();A.translate(x,yy);A.scale(sc,sc);clipSquare();A.clip();
+      if(mode==="PAINT"){
+        if(!k.paintInit){A.fillStyle="#FFFFFF";A.fillRect(0,0,S,S);k.paintInit=true}
+        paint(S,S,O,true);
+      }else if(mode==="BARS")bars(S,S);
+      else wave(S,S);
+      A.restore();
+      A.save();A.translate(x,yy);A.scale(sc,sc);clipSquare();A.strokeStyle="#E8E0D8";A.lineWidth=1/sc;A.stroke();A.restore();
+    }
+  }catch(e){console.error(e)}
+}
+
+
+/* ---------- PNG export ---------- */
+el.pngBtn.addEventListener("click",()=>{
+  canvas.toBlob(blob=>{
+    if(!blob){status("PNG export failed",true);return}
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download=`waveora-${mode.replace("REEL-","").toLowerCase()}.png`;
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+    status("Saved PNG");
+  },"image/png");
+});
+
+/* ---------- FIXED high-quality MP4 export ---------- */
+let exportWidth=0, exportHeight=0, prevCanvasW=0, prevCanvasH=0;
+function getExportSize(){
+  const aspect=document.querySelector("#aspects button.active")?.dataset.aspect||"9:16";
+  // true 4K, but capped to avoid WASM OOM - use 4K, fallback to 1080p if fails
+  const sizes={"9:16":[2160,3840],"16:9":[3840,2160],"1:1":[2160,2160],"4:5":[2160,2700]};
+  const sizes1080={"9:16":[1080,1920],"16:9":[1920,1080],"1:1":[1080,1080],"4:5":[1080,1350]};
+  const use4k = localStorage.getItem('waveora-4k') !== '0';
+  return { full: sizes[aspect]||sizes["9:16"], fallback: sizes1080[aspect]||sizes1080["9:16"], use4k };
+}
+function setCanvasExportRes(w,h){
+  prevCanvasW = canvas.width;
+  prevCanvasH = canvas.height;
+  exportWidth=w; exportHeight=h;
+  canvas.width=w; canvas.height=h;
+  // force a redraw at new res immediately
+  try{ drawFrame(); }catch(e){}
+}
+function restoreCanvasRes(){
+  if(prevCanvasW){ canvas.width=prevCanvasW; canvas.height=prevCanvasH; exportWidth=0; resize(); }
+}
+
+el.mp4Btn.addEventListener("click",async()=>{
+  if(recording){if(recorder&&recorder.state!=="inactive")recorder.stop();return}
+  if(!buffer||!dest){status("Load audio first",true);return}
+  if(location.protocol==="file:"){
+    status("Export blocked on file:// — please run: npx serve .  or  python -m http.server  then open http://localhost:8000",true);
+    return;
+  }
+  try{
+    const {full, fallback, use4k} = getExportSize();
+    let [outW,outH] = use4k ? full : fallback;
+    // Step 1: bump canvas to export resolution BEFORE captureStream
+    setCanvasExportRes(outW,outH);
+    status(`Recording at ${outW}x${outH} — press STOP when done...`);
+    
+    // give browser a frame to render at new size
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    
+    const canvasStream = canvas.captureStream(60);
+    if(canvasStream.getVideoTracks().length===0) throw new Error("captureStream failed - canvas not visible?");
+    const audioTracks = dest.stream.getAudioTracks();
+    const stream=new MediaStream([...canvasStream.getVideoTracks(),...audioTracks]);
+    
+    const types=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
+    const type=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t)) || "video/webm";
+    if(!window.MediaRecorder || !MediaRecorder.isTypeSupported(type)){
+      throw new Error("This browser doesn't support MediaRecorder webm. Use Chrome/Edge 120+");
+    }
+    recorder=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:12000000,audioBitsPerSecond:192000});
+    chunks=[];
+    recorder.ondataavailable=e=>{if(e.data && e.data.size>0)chunks.push(e.data)};
+    recorder.onerror=e=>{status(`Recording failed: ${e.error?.message||"unknown"}`,true); restoreCanvasRes();};
+
+    recorder.onstop=async()=>{
+      restoreCanvasRes();
+      if(chunks.length===0){status("No data recorded - try again and keep tab focused",true); return;}
+      try{
+        el.mp4Btn.disabled=true;el.mp4Btn.textContent=`ENCODING ${outW}x${outH}…`;
+        status("Recorded. Loading FFmpeg.wasm (first time ~30MB)...");
+        const webmBlob=new Blob(chunks,{type});
+        // Try 4K, on failure fallback to 1080p webm download
+        let mp4Blob=null;
+        try{
+          mp4Blob=await window.waveoraEncodeMp4(webmBlob,{outW,outH, onProgress:(p,msg)=>{
+            if(p>=0) el.mp4Btn.textContent=`ENCODING ${Math.round(p*100)}%`;
+            if(msg) status(msg);
+          }});
+        }catch(encErr){
+          console.warn("4K encode failed, trying 1080p",encErr);
+          if(use4k){
+            status(`4K encode failed (${encErr.message}). Retrying 1080p...`);
+            // Re-encode with downscale to 1080p to save memory
+            const [fW,fH]=fallback;
+            try{
+              mp4Blob=await window.waveoraEncodeMp4(webmBlob,{outW:fW,outH:fH, onProgress:(p)=>{el.mp4Btn.textContent=`ENCODING 1080p ${Math.round(p*100)}%`}});
+              outW=fW; outH=fH;
+            }catch(e2){
+              throw encErr; // throw original
+            }
+          }else{ throw encErr; }
+        }
+        const url=URL.createObjectURL(mp4Blob),a=document.createElement("a");
+        a.href=url;a.download=`waveora-${mode.replace("REEL-","").toLowerCase()}-${outW}x${outH}.mp4`;
+        document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+        status(`Saved MP4 — ${outW}×${outH}, H.264 + AAC. If you want WebM fallback too, it was also recorded.`);
+        // also offer webm as backup
+        const webmUrl=URL.createObjectURL(webmBlob);
+        const b=document.createElement("a");b.href=webmUrl;b.download=`waveora-backup-${outW}x${outH}.webm`;
+        // don't auto-download backup, just log
+        setTimeout(()=>URL.revokeObjectURL(webmUrl),60000);
+      }catch(e){
+        console.error(e);
+        // Fallback: offer the raw webm which is always playable
+        try{
+          const webmBlob=new Blob(chunks,{type});
+          const url=URL.createObjectURL(webmBlob),a=document.createElement("a");
+          a.href=url;a.download=`waveora-${mode.replace("REEL-","").toLowerCase()}-fallback.webm`;
+          document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+          status(`FFmpeg MP4 failed (${e.message}). Saved WebM fallback instead. Try Chrome, localhost, and disable Brave shields. Error: ${e.message}`,true);
+        }catch(e2){
+          status(`MP4 export failed: ${e.message}. Must be on http://localhost, Chrome/Edge, tab focused.`,true);
+        }
+      }finally{
+        recording=false;el.mp4Btn.disabled=false;el.mp4Btn.textContent="EXPORT 4K MP4";el.mp4Btn.style.background="";el.mp4Btn.style.color="";el.mp4Btn.style.borderColor="";
+        el.recordTimer.textContent="";clearInterval(recTimer);
+      }
+    };
+    recorder.start(100);recording=true;recStart=Date.now();
+    el.mp4Btn.textContent="STOP & SAVE MP4";el.mp4Btn.style.background="#FF3B30";el.mp4Btn.style.color="#fff";el.mp4Btn.style.borderColor="#FF3B30";
+    recTimer=setInterval(()=>{const s=Math.floor((Date.now()-recStart)/1000);el.recordTimer.textContent=`REC ${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`},250);
+    if(!playing){c=0;play()}
+  }catch(e){restoreCanvasRes();status(`Record failed: ${e.message}`,true);console.error(e)}
+});
+
+setMode("REEL-PATCH");setAspect("9:16");resize();frameLoop();
+})();
+</script>
+
+<script type="module">
+  import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/+esm";
+  import { fetchFile, toBlobURL } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/+esm";
+  let ffmpegInstance=null, ffmpegLoading=null;
+  async function getFFmpeg(onProgress){
+    if(ffmpegInstance?.loaded) return ffmpegInstance;
+    if(ffmpegLoading) return ffmpegLoading;
+    ffmpegLoading=(async()=>{
+      const ff=new FFmpeg();
+      ff.on("log",({message})=>{ if(message) console.log("FFmpeg:",message); });
+      ff.on("progress",({progress})=>{
+        if(onProgress && Number.isFinite(progress)) onProgress(progress, `ENCODING ${Math.round(progress*100)}%`);
+      });
+      const isIsolated = window.crossOriginIsolated;
+      console.log("crossOriginIsolated:", isIsolated);
+      // Vercel with COOP/COEP headers -> use MT core (4x faster), else use ST
+      const corePkg = isIsolated ? "@ffmpeg/core-mt@0.12.10" : "@ffmpeg/core@0.12.10";
+      const base = `https://cdn.jsdelivr.net/npm/${corePkg}/dist/umd`;
+      try{
+        const coreURL = await toBlobURL(`${base}/ffmpeg-core.js`,"text/javascript");
+        const wasmURL = await toBlobURL(`${base}/ffmpeg-core.wasm`,"application/wasm");
+        const workerURL = isIsolated ? await toBlobURL(`${base}/ffmpeg-core.worker.js`,"text/javascript") : undefined;
+        await ff.load({coreURL, wasmURL, workerURL});
+      }catch(e){
+        console.error("FFmpeg load failed",e);
+        throw new Error("FFmpeg failed: " + e.message + ". Disable adblock / Brave shield.");
+      }
+      ffmpegInstance=ff; return ff;
+    })();
+    try{ return await ffmpegLoading }finally{ ffmpegLoading=null }
+  }
+  window.waveoraEncodeMp4=async(blob,{outW,outH,onProgress})=>{
+    const ff=await getFFmpeg(onProgress);
+    const input="waveora-input.webm",output="waveora-output.mp4";
+    if(onProgress) onProgress(0.05,"Writing input...");
+    await ff.writeFile(input,await fetchFile(blob));
+    if(onProgress) onProgress(0.15,"Transcoding H.264 4K...");
+    const threads = window.crossOriginIsolated ? "0" : "1"; // 0 = auto on MT
+    const preset = window.crossOriginIsolated ? "medium" : "superfast"; // better quality when MT
+    const vf = `scale=${outW}:${outH}:flags=lanczos,setsar=1,format=yuv420p`;
+    // High quality: crf 18 on Vercel (MT), crf 20 on GitHub (ST)
+    const crf = window.crossOriginIsolated ? "18" : "20";
+    await ff.exec(["-i",input,"-vf",vf,"-c:v","libx264","-preset",preset,"-crf",crf,"-pix_fmt","yuv420p","-c:a","aac","-b:a","192k","-ar","48000","-movflags","+faststart","-threads",threads,"-y",output]);
+    if(onProgress) onProgress(0.95,"Finalizing...");
+    const data=await ff.readFile(output);
+    try{await ff.deleteFile(input);await ff.deleteFile(output)}catch{}
+    return new Blob([data.buffer],{type:"video/mp4"});
+  };
+</script>
+
+</body>
+</html>
