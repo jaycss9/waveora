@@ -86,7 +86,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
       <div style="display:flex;flex-direction:column;gap:10px">
         <button class="btn" id="mp4Btn" type="button">EXPORT 1080p</button>
         <button class="btn" id="pngBtn" type="button">SAVE PNG</button>
-        <p id="exportNote" style="font-size:10px;color:#9A9A9A;line-height:1.4">Brave-proof 1080p - instant, no FFmpeg, no shrink. First export loads the encoder; keep this tab open while it processes.</p>
+        <p id="exportNote" style="font-size:10px;color:#9A9A9A;line-height:1.4">1080p instant export - Brave-proof, no FFmpeg, no shrink. First export loads the encoder; keep this tab open while it processes.</p>
       </div>
     </section>
   </div>
@@ -127,12 +127,12 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
     <section class="card">
       <div class="label">VISUAL TEXT</div>
       <div style="display:flex;flex-direction:column;gap:10px">
-        <label class="fld">NAME<input id="tName" value="cedania" maxlength="40"></label>
+        <label class="fld">NAME<input id="tName" value="meow meow" maxlength="40"></label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <label class="fld">BPM<input id="tBpm" value="102" maxlength="6"></label>
           <label class="fld">KEY<input id="tKey" value="D" maxlength="6"></label>
         </div>
-        <label class="fld">@HANDLE<input id="tHandle" value="@nikitaakira" maxlength="30"></label>
+        <label class="fld">@HANDLE<input id="tHandle" value="@beatsbyskkai" maxlength="30"></label>
       </div>
     </section>
     <section class="card">
@@ -151,7 +151,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 const $=id=>document.getElementById(id);
 const canvas=$("mainCanvas"), frame=$("frame"), A=canvas.getContext("2d",{alpha:false});
 const el={audioDrop:$("audioDrop"),audioFile:$("audioFile"),audioStatus:$("audioStatus"),seek:$("seek"),timeDisplay:$("timeDisplay"),playBtn:$("playBtn"),mp4Btn:$("mp4Btn"),pngBtn:$("pngBtn"),recordTimer:$("recordTimer"),toast:$("toast"),analysis:$("analysis"),sens:$("sensitivity"),volume:$("volume")};
-const WT={name:"cedania",bpm:"102",key:"D",handle:"@nikitaakira",get info(){return `${this.bpm} BPM${this.key?" "+this.key:""}`}};
+const WT={name:"meow meow",bpm:"102",key:"D",handle:"@beatsbyskkai",get info(){return `${this.bpm} BPM${this.key?" "+this.key:""}`}};
 const f=frame; // used by draw functions for size
 
 let ctx=null,buffer=null,source=null,analyser=null,gain=null,dest=null;
@@ -235,7 +235,7 @@ el.volume.addEventListener("input",()=>{const v=parseFloat(el.volume.value);if(g
 el.sens.addEventListener("input",()=>{V=parseFloat(el.sens.value);$("sensVal").textContent=V.toFixed(1)});
 
 const FIELDS=[["tName","name"],["tBpm","bpm"],["tKey","key"],["tHandle","handle"]];
-const STORE="waveora.visualText.v1";
+const STORE="waveora.visualText.v2";
 let saved={};
 try{saved=JSON.parse(localStorage.getItem(STORE)||"{}")||{}}catch{saved={}}
 const touched=new Set(Object.keys(saved));            // fields the user has set themselves
@@ -249,10 +249,8 @@ FIELDS.forEach(([id,key])=>{
     try{localStorage.setItem(STORE,JSON.stringify(saved))}catch{}
   });
 });
-
 /* ---------- canvas sizing ---------- */
 function resize(){
-  if(window.__exporting) return;
   const r=frame.getBoundingClientRect();if(!r.width||!r.height)return;
   const p=Math.min(window.devicePixelRatio||1,2);
   canvas.width=Math.floor(r.width*p);canvas.height=Math.floor(r.height*p);
@@ -261,10 +259,10 @@ function resize(){
 new ResizeObserver(resize).observe(frame);
 window.addEventListener("resize",resize);
 
-/* ---------- export canvas (hidden) - fixes shrink bug ---------- */
+/* ---------- export canvas (hidden) - upscales main preview, no shrink ---------- */
 const exportCanvas = document.createElement('canvas');
 const exportCtx = exportCanvas.getContext('2d', {alpha:false});
-exportCanvas.style.cssText='position:fixed;left:-9999px;top:0;pointer-events:none;opacity:0;';
+exportCanvas.style.cssText='position:fixed;left:-9999px;top:0;pointer-events:none;';
 document.body.appendChild(exportCanvas);
 window.__exporting = false;
 
@@ -280,27 +278,24 @@ function ld(l,p,O,I,m){let M=m?m.w:f.getBoundingClientRect().width,_=m?m.h:f.get
 function ud(l,p,O,I,m){let M=m?m.w:f.getBoundingClientRect().width,_=m?m.h:f.getBoundingClientRect().height;or(m,M,_,(P,X)=>{l.fillStyle="#0A0A0A",l.fillRect(0,0,P,X);let J=p.slice(0,30).reduce((H,U)=>H+U,0)/30/255,re=p.slice(80,200).reduce((H,U)=>H+U,0)/120/255,ce=p.slice(400,700).reduce((H,U)=>H+U,0)/300/255,Ae=(()=>{let H=0;for(let U=0;U<I.length;U++){let se=(I[U]-128)/128;H+=se*se}return Math.sqrt(H/I.length)})(),Q=y?c/y:0.5;l.fillStyle="#FFFFFF",l.font='400 18px "JetBrains Mono", monospace',l.fillText(WT.name,12,24),l.fillStyle="#6B6B6B",l.font='400 10px "JetBrains Mono"',l.fillText(WT.info,12,38);let g=P*0.75,h=(P-g)/2,N=52,Y=12,q=X*0.28;l.fillStyle="#141414",l.fillRect(h,N,g,q),l.strokeStyle="#222",l.lineWidth=1,l.strokeRect(h,N,g,q),l.fillStyle="#FFFFFF",l.font='700 8px "JetBrains Mono"',l.fillText("WAVE",h+6,N+10),l.fillStyle="#3A3F1A",l.beginPath(),l.moveTo(h,N+q);for(let H=0;H<g;H++){let U=Math.floor(H/g*I.length),se=N+q*0.5+(I[U]-128)/128*q*0.3+6;if(H===0)l.lineTo(h+H,se);else l.lineTo(h+H,se)}l.lineTo(h+g,N+q),l.closePath(),l.fill(),l.fillStyle="#D6FF00",l.beginPath(),l.moveTo(h,N+q);for(let H=0;H<g;H++){let U=Math.floor(H/g*I.length),se=N+q*0.5+(I[U]-128)/128*q*0.35*V*(0.6+J);if(H===0)l.lineTo(h+H,se);else l.lineTo(h+H,se)}l.lineTo(h+g,N+q),l.closePath(),l.fill(),l.strokeStyle="#FFFFFF",l.lineWidth=1.2,l.beginPath(),l.moveTo(h+g*Q,N),l.lineTo(h+g*Q,N+q),l.stroke(),N+=q+Y;let ae=X*0.14;l.fillStyle="#141414",l.fillRect(h,N,g,ae),l.strokeStyle="#222",l.strokeRect(h,N,g,ae),l.fillStyle="#FFFFFF",l.font='700 8px "JetBrains Mono"',l.fillText("PHASE",h+6,N+10),l.fillStyle="#6B6B6B",l.font='400 7px "JetBrains Mono"',l.fillText("+0.5U",h+g-30,N+10);let K=Math.min(g,ae)-20,ue=h+g*0.5-K/2,L=N+14;l.strokeStyle="#333",l.strokeRect(ue,L,K,K-4);let b=ue+K/2+Math.cos(Date.now()*0.001+re*2)*K*0.2,pe=L+(K-4)/2+Math.sin(Date.now()*0.0015+ce)*K*0.18;l.fillStyle="#D6FF00",l.shadowColor="#D6FF00",l.shadowBlur=12,l.beginPath(),l.arc(b,pe,6+Ae*10,0,Math.PI*2),l.fill(),l.shadowBlur=0,N+=ae+Y;let te=X*0.18;l.fillStyle="#141414",l.fillRect(h,N,g,te),l.strokeStyle="#222",l.strokeRect(h,N,g,te),l.fillStyle="#FFFFFF",l.font='700 8px "JetBrains Mono"',l.fillText("BANDS",h+6,N+10);let $=14,ie=4,T=(g-12)/$,G=(te-18)/ie;for(let H=0;H<$;H++){let U=p[Math.floor(H/$*300)]/255;for(let se=0;se<ie;se++)if(se<U*ie*V){let wn=G*0.8*(0.5+U*0.5);l.fillStyle="#D6FF00",l.fillRect(h+6+H*T+1,N+14+se*G+(G-wn),T-2,wn)}}N+=te+Y;let Z=X*0.22;l.fillStyle="#141414",l.fillRect(h,N,g,Z),l.strokeStyle="#222",l.strokeRect(h,N,g,Z);let ee=-18.9+Ae*2,fe=-21.9+re*3,Le=-5.7+ce*2,Ce=3.7+J*2;if(l.fillStyle="#FFFFFF",l.font='700 14px "JetBrains Mono"',l.fillText(ee.toFixed(1),h+6,N+22),l.fillStyle="#6B6B6B",l.font='400 7px "JetBrains Mono"',l.fillText("I",h+48,N+22),l.fillStyle="#FFFFFF",l.font='700 10px "JetBrains Mono"',l.fillText(fe.toFixed(1),h+60,N+22),l.fillStyle="#6B6B6B",l.font='400 7px "JetBrains Mono"',l.fillText("S",h+90,N+22),l.fillStyle="#FFFFFF",l.font='700 10px "JetBrains Mono"',l.fillText(Le.toFixed(1),h+102,N+22),l.fillStyle="#6B6B6B",l.font='400 7px "JetBrains Mono"',l.fillText("TP",h+130,N+22),l.fillStyle="#FFFFFF",l.font='700 10px "JetBrains Mono"',l.fillText(Ce.toFixed(1),h+148,N+22),l.fillStyle="#6B6B6B",l.font='400 7px "JetBrains Mono"',l.fillText("LRA",h+170,N+22),p[0]!==void 0){if(k.loudnessHistory.push(Ae),k.loudnessHistory.length>g)k.loudnessHistory.shift()}let x=N+28,le=Z-34;l.fillStyle="#1A1A0A",l.fillRect(h+4,x,g-8,le),l.fillStyle="#D6FF00";for(let H=0;H<k.loudnessHistory.length;H++){let se=k.loudnessHistory[H]*le*V;l.fillRect(h+4+H,x+le-se,1,se)}l.strokeStyle="#FFFFFF",l.lineWidth=1,l.beginPath(),l.moveTo(h+4+(g-8)*Q,x),l.lineTo(h+4+(g-8)*Q,x+le),l.stroke(),l.fillStyle="#6B6B6B",l.font='400 9px "JetBrains Mono"',l.textAlign="right",l.fillText(WT.handle,P-12,X-10),l.textAlign="left"})}
 function id(l,p,O,I,m){let M=m?m.w:f.getBoundingClientRect().width,_=m?m.h:f.getBoundingClientRect().height;or(m,M,_,(P,X)=>{l.fillStyle="#F5F3EF",l.fillRect(0,0,P,X);let J=(()=>{let L=0;for(let b=0;b<I.length;b++){let pe=(I[b]-128)/128;L+=pe*pe}return Math.sqrt(L/I.length)})(),re=p.slice(80,200).reduce((L,b)=>L+b,0)/120/255,ce=p.slice(400,700).reduce((L,b)=>L+b,0)/300/255,Ae=y?c/y:0.18;l.fillStyle="#111",l.font='700 20px "JetBrains Mono", monospace',l.fillText(WT.name,16,28),l.fillStyle="#9A9A9A",l.font='400 10px "JetBrains Mono"',l.fillText(WT.info,16,44);let Q=-18.9+(J-0.3)*4+re*1.2;l.fillStyle="#111",l.font='700 56px "Space Grotesk", sans-serif',l.fillText(Q.toFixed(1),16,96),l.fillStyle="#6B6B6B",l.font='400 10px "JetBrains Mono"',l.fillText("LUFS INTEGRATED",16,112),l.fillStyle="#9A9A9A",l.font='400 9px "JetBrains Mono"',l.textAlign="right",l.fillText("TARGET -14",P-16,60),l.fillText(`-18.7 vs ${Q.toFixed(1)}`,P-16,74),l.fillText("-18.7 diff",P-16,88),l.textAlign="left";let g=16,h=P-32,N=14,Y=22,q=132;[{label:"MOMENTARY",val:-18.7+J*2+ce,color:"#FF6B2B"},{label:"SHORT TERM",val:-21.6+re*3,color:"#FF6B2B"},{label:"INTEGRATED",val:Q,color:"#111"},{label:"TRUE PEAK",val:-5.7+ce*2+J,color:"#FF6B2B"}].forEach((L)=>{l.fillStyle="#6B6B6B",l.font='400 8px "JetBrains Mono"',l.fillText(L.label,g,q-2),l.fillStyle="#111",l.font='400 8px "JetBrains Mono"',l.textAlign="right",l.fillText(L.val.toFixed(1),g+h,q-2),l.textAlign="left",l.fillStyle="#E8E0D8",l.fillRect(g,q,h,N);let b=h*Math.max(0,Math.min(1,(L.val+40)/40))*V;l.fillStyle=L.color,l.fillRect(g,q,b,N),l.strokeStyle="#FFFFFF88",l.lineWidth=1,l.beginPath(),l.moveTo(g+h*0.65,q),l.lineTo(g+h*0.65,q+N),l.stroke(),q+=Y+4});let K=q+8,ue=X-K-28;if(l.fillStyle="#FFFFFF",l.strokeStyle="#E8E0D8",l.lineWidth=1,l.fillRect(g,K,h,ue),l.strokeRect(g,K,h,ue),p[0]!==void 0){if(k.waveHistory.push(new Uint8Array(I.slice(0,128))),k.waveHistory.length>h)k.waveHistory.shift()}for(let L=0;L<k.waveHistory.length;L++){let b=k.waveHistory[L];if(!b)continue;let te=b.reduce(($,ie)=>$+ie,0)/b.length/255*ue*0.4*V;l.fillStyle="#DDD7CE",l.fillRect(g+L,K+ue-te,1,te)}l.strokeStyle="#111",l.lineWidth=1.2,l.beginPath();for(let L=0;L<I.length;L++){let b=g+L/I.length*h,pe=K+ue/2+(I[L]-128)/128*ue*0.35*V;if(L===0)l.moveTo(b,pe);else l.lineTo(b,pe)}l.stroke(),l.strokeStyle="#BBB",l.lineWidth=0.8,l.setLineDash([3,3]),l.beginPath();for(let L=0;L<k.loudnessHistory.length;L++){let b=g+L/k.loudnessHistory.length*h,pe=K+ue*0.5-k.loudnessHistory[L]*ue*0.3;if(L===0)l.moveTo(b,pe);else l.lineTo(b,pe)}l.stroke(),l.setLineDash([]),l.strokeStyle="#FF3B30",l.lineWidth=1.5,l.beginPath(),l.moveTo(g+h*Ae,K),l.lineTo(g+h*Ae,K+ue),l.stroke(),l.fillStyle="#FF3B30",l.font='700 8px "JetBrains Mono"',l.fillText("NOW",g+h*Ae+4,K+10),l.fillStyle="#F5F3EF",l.fillRect(0,X-22,P,22),l.strokeStyle="#E8E0D8",l.beginPath(),l.moveTo(0,X-22.5),l.lineTo(P,X-22.5),l.stroke(),l.fillStyle="#6B6B6B",l.font='400 8px "JetBrains Mono"',l.fillText("EBU R128  400ms  75%  4x OVERSAMPLED PEAK",12,X-8),l.fillStyle="#111",l.font='400 9px "JetBrains Mono"',l.textAlign="right",l.fillText(`${w(c)}/${w(y||12)}  ${WT.handle}`,P-12,X-8),l.textAlign="left"})}
 
-function paint(l,p,O,_unused, ctx){
-  const C = ctx || A;
+function paint(l,p,O){
   const n=Math.floor(2+O.bass*6*V);
   for(let i=0;i<n;i++){
     const x=l*.5+(Math.random()-.5)*l*.6,yy=p*.5+(Math.random()-.5)*p*.6,r=4+O.bass*40;
-    C.fillStyle=O.bass>.6?"#111":"#FB923C";C.globalAlpha=.85;C.beginPath();C.arc(x,yy,r,0,Math.PI*2);C.fill();
+    A.fillStyle=O.bass>.6?"#111":"#FB923C";A.globalAlpha=.85;A.beginPath();A.arc(x,yy,r,0,Math.PI*2);A.fill();
   }
-  C.globalAlpha=1;
+  A.globalAlpha=1;
 }
-function bars(l,p, ctx){
-  const C = ctx || A;
-  C.fillStyle="#FFFFFF";C.fillRect(0,0,l,p);
+function bars(l,p){
+  A.fillStyle="#FFFFFF";A.fillRect(0,0,l,p);
   const n=48,bw=l/n;
-  for(let i=0;i<n;i++){const m=ke[i*4]/255;C.fillStyle=i%2===0?"#111":"#E8E0D8";const h=Math.min(p,m*p*.9*V);C.fillRect(i*bw+1,p-h,bw-2,h)}
+  for(let i=0;i<n;i++){const m=ke[i*4]/255;A.fillStyle=i%2===0?"#111":"#E8E0D8";const h=Math.min(p,m*p*.9*V);A.fillRect(i*bw+1,p-h,bw-2,h)}
 }
-function wave(l,p, ctx){
-  const C = ctx || A;
-  C.fillStyle="#FFFFFF";C.fillRect(0,0,l,p);
-  C.strokeStyle="#111";C.lineWidth=1.4;C.beginPath();
-  for(let i=0;i<me.length;i++){const x=i/me.length*l,yy=p*.5+(me[i]-128)/128*p*.4*V;i===0?C.moveTo(x,yy):C.lineTo(x,yy)}
-  C.stroke();
+function wave(l,p){
+  A.fillStyle="#FFFFFF";A.fillRect(0,0,l,p);
+  A.strokeStyle="#111";A.lineWidth=1.4;A.beginPath();
+  for(let i=0;i<me.length;i++){const x=i/me.length*l,yy=p*.5+(me[i]-128)/128*p*.4*V;i===0?A.moveTo(x,yy):A.lineTo(x,yy)}
+  A.stroke();
 }
 
 const VIS=[
@@ -348,54 +343,6 @@ function analyse(){
 }
 
 /* ---------- main loop ---------- */
-function drawFrameToContext(ctxToUse, W, H, O){
-  try{
-    const S=560;
-    const side=Math.min(W,H)*0.92, sc=side/S;
-    const x=(W-side)/2, yy=(H-side)/2;
-    const vis=VIS.find(v=>v[0]===mode);
-    const light=!vis||LIGHT.includes(mode);
-    const bg=vis?(PAGE_BG[mode]||"#F7F5F0"):"#F7F5F0";
-    const clipSquare=()=>{zu(0,0,S,S,16)};
-    if(mode!=="PAINT"||!k.paintInit){ctxToUse.fillStyle=bg;ctxToUse.fillRect(0,0,W,H)}
-    if(vis){
-      ctxToUse.save();ctxToUse.translate(x,yy);ctxToUse.scale(sc,sc);
-      if(light){ctxToUse.shadowColor="rgba(0,0,0,.14)";ctxToUse.shadowBlur=28;ctxToUse.shadowOffsetY=12}
-      clipSquare();ctxToUse.fillStyle="#FFFFFF";if(!light)ctxToUse.fillStyle="#0A0A0A";ctxToUse.fill();ctxToUse.restore();
-      ctxToUse.save();ctxToUse.translate(x,yy);ctxToUse.scale(sc,sc);clipSquare();ctxToUse.clip();
-      // visuals expect global A, so temporarily swap
-      const origA = A;
-      // hack: assign to window.A if possible, but we use closure - call vis with ctxToUse as A via global override
-      // Since vis functions use A global, we set A = ctxToUse via eval of outer scope - we reassign by using a trick: A is const, so we use Object.assign on context? Instead we pass ctxToUse as first arg, and our ll etc use first arg.
-      // Our ll etc already take A as first param, so vis[2] will work if we call vis[2](S,S,O) it internally uses A from closure. So we need to make A point to ctxToUse.
-      // Workaround: temporarily set global A variable via window (since const A is in closure, we can't reassign, but we can set global property and vis functions use closure A, not window.A)
-      // So we directly call the visual implementations with ctxToUse
-      vis[2](S,S,{x:0,y:0,w:S,h:S}); // this still uses outer A, but we also draw same via ctxToUse below? Actually vis functions use the passed A? Let's check: VIS defined as (l,p,O)=>ll(A,ke,...) - it uses outer A. So we need to override A for export.
-      // Instead, we manually call ll,ul etc with ctxToUse
-      // For now, we re-execute the visual using ctxToUse by calling the underlying functions
-      // Map mode to function
-      if(mode==="REEL-PATCH") ll(ctxToUse,ke,we,me,O);
-      else if(mode==="REEL-FIELD") ul(ctxToUse,ke,we,me,O);
-      else if(mode==="REEL-VECTOR") il(ctxToUse,ke,we,me,O);
-      else if(mode==="REEL-SCOPE") td(ctxToUse,ke,we,me,O);
-      else if(mode==="REEL-CAMPAIGN") ld(ctxToUse,ke,we,me,O);
-      else if(mode==="REEL-ORACLE") ud(ctxToUse,ke,we,me,O);
-      else if(mode==="REEL-LOUDNESS") id(ctxToUse,ke,we,me,O);
-      ctxToUse.restore();
-      ctxToUse.save();ctxToUse.translate(x,yy);ctxToUse.scale(sc,sc);clipSquare();ctxToUse.strokeStyle=light?"#E8E0D8":"#222";ctxToUse.lineWidth=1/sc;ctxToUse.stroke();ctxToUse.restore();
-    }else{
-      ctxToUse.save();ctxToUse.translate(x,yy);ctxToUse.scale(sc,sc);clipSquare();ctxToUse.clip();
-      if(mode==="PAINT"){
-        if(!k.paintInit){ctxToUse.fillStyle="#FFFFFF";ctxToUse.fillRect(0,0,S,S);k.paintInit=true}
-        paint(S,S,O,true, ctxToUse);
-      }else if(mode==="BARS") bars(S,S, ctxToUse);
-      else wave(S,S, ctxToUse);
-      ctxToUse.restore();
-      ctxToUse.save();ctxToUse.translate(x,yy);ctxToUse.scale(sc,sc);clipSquare();ctxToUse.strokeStyle="#E8E0D8";ctxToUse.lineWidth=1/sc;ctxToUse.stroke();ctxToUse.restore();
-    }
-  }catch(e){console.error(e)}
-}
-
 function frameLoop(){
   raf=requestAnimationFrame(frameLoop);
   const r=frame.getBoundingClientRect(),W=r.width,H=r.height;if(!W||!H)return;
@@ -406,12 +353,38 @@ function frameLoop(){
     el.timeDisplay.textContent=`${w(c)} / ${w(y)}`;
     el.seek.value=String(Math.round(c/y*1000));
   }
-  // draw to main canvas
-  drawFrameToContext(A, W, H, O);
-  // if exporting, also draw to export canvas at 1080p
-  if(window.__exporting && exportCanvas.width){
-    drawFrameToContext(exportCtx, exportCanvas.width, exportCanvas.height, O);
-  }
+  try{
+    const S=560;
+    const side=Math.min(W,H)*0.92, sc=side/S;
+    const x=(W-side)/2, yy=(H-side)/2;
+    const vis=VIS.find(v=>v[0]===mode);
+    const light=!vis||LIGHT.includes(mode);
+    const bg=vis?(PAGE_BG[mode]||"#F7F5F0"):"#F7F5F0";
+    const clipSquare=()=>{zu(0,0,S,S,16)};
+    if(mode!=="PAINT"||!k.paintInit){A.fillStyle=bg;A.fillRect(0,0,W,H)}
+    if(vis){
+      A.save();A.translate(x,yy);A.scale(sc,sc);
+      if(light){A.shadowColor="rgba(0,0,0,.14)";A.shadowBlur=28/1;A.shadowOffsetY=12}
+      clipSquare();A.fillStyle="#FFFFFF";if(!light)A.fillStyle="#0A0A0A";A.fill();A.restore();
+      A.save();A.translate(x,yy);A.scale(sc,sc);clipSquare();A.clip();
+      vis[2](S,S,{x:0,y:0,w:S,h:S});
+      A.restore();
+      A.save();A.translate(x,yy);A.scale(sc,sc);clipSquare();A.strokeStyle=light?"#E8E0D8":"#222";A.lineWidth=1/sc;A.stroke();A.restore();
+    }else{
+      A.save();A.translate(x,yy);A.scale(sc,sc);clipSquare();A.clip();
+      if(mode==="PAINT"){
+        if(!k.paintInit){A.fillStyle="#FFFFFF";A.fillRect(0,0,S,S);k.paintInit=true}
+        paint(S,S,O,true);
+      }else if(mode==="BARS")bars(S,S);
+      else wave(S,S);
+      A.restore();
+      A.save();A.translate(x,yy);A.scale(sc,sc);clipSquare();A.strokeStyle="#E8E0D8";A.lineWidth=1/sc;A.stroke();A.restore();
+    }
+    // If exporting, copy main canvas to export canvas at 1080p (upscale, no shrink)
+    if(window.__exporting && exportCanvas.width){
+      exportCtx.drawImage(canvas, 0, 0, exportCanvas.width, exportCanvas.height);
+    }
+  }catch(e){console.error(e)}
 }
 
 
@@ -427,7 +400,7 @@ el.pngBtn.addEventListener("click",()=>{
 });
 
 
-/* ---------- BRAVE-PROOF 1080p DIRECT EXPORT - NO SHRINK ---------- */
+/* ---------- EXPORT 1080p - Brave-proof, no shrink, no FFmpeg ---------- */
 function getExportSize1080(){
   const aspect=document.querySelector("#aspects button.active")?.dataset.aspect||"9:16";
   const sizes={"9:16":[1080,1920],"16:9":[1920,1080],"1:1":[1080,1080],"4:5":[1080,1350]};
@@ -439,17 +412,12 @@ el.mp4Btn.addEventListener("click",async()=>{
   if(!buffer||!dest){status("Load audio first",true);return}
   try{
     const [outW,outH] = getExportSize1080();
-    // Setup export canvas - main canvas stays untouched, so no shrink
     exportCanvas.width = outW;
     exportCanvas.height = outH;
     window.__exporting = true;
-    k.paintInit = false; // reset paint for export canvas
-    // wait 2 frames so export canvas gets first draw
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
     
-    const canvasStream = exportCanvas.captureStream(60);
-    if(canvasStream.getVideoTracks().length===0) throw new Error("export captureStream failed");
-    const stream=new MediaStream([...canvasStream.getVideoTracks(),...dest.stream.getAudioTracks()]);
+    const stream=new MediaStream([...exportCanvas.captureStream(60).getVideoTracks(),...dest.stream.getAudioTracks()]);
     
     const prefTypes = [
       "video/mp4;codecs=avc1,opus",
@@ -460,7 +428,6 @@ el.mp4Btn.addEventListener("click",async()=>{
       "video/webm"
     ];
     const type = prefTypes.find(t=>window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "video/webm";
-    console.log("Recording with", type, outW, outH);
     
     recorder=new MediaRecorder(stream,{
       mimeType:type,
@@ -480,14 +447,12 @@ el.mp4Btn.addEventListener("click",async()=>{
         a.href=url;
         a.download=`waveora-${mode.replace("REEL-","").toLowerCase()}-${outW}x${outH}.${ext}`;
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-        status(`Saved ${outW}x${outH} ${ext.toUpperCase()} - ${(blob.size/1048576).toFixed(1)}MB - Brave-proof, no FFmpeg`);
+        status(`Saved ${outW}x${outH} ${ext.toUpperCase()} - ${(blob.size/1048576).toFixed(1)}MB`);
       }catch(e){
-        console.error(e);
         status(`Save failed: ${e.message}`,true);
       }finally{
         recording=false;el.mp4Btn.disabled=false;el.mp4Btn.textContent="EXPORT 1080p";el.mp4Btn.style.background="";el.mp4Btn.style.color="";el.mp4Btn.style.borderColor="";
         el.recordTimer.textContent="";clearInterval(recTimer);
-        // clear export canvas
         exportCanvas.width=0;
       }
     };
@@ -495,7 +460,7 @@ el.mp4Btn.addEventListener("click",async()=>{
     el.mp4Btn.textContent="STOP & SAVE";el.mp4Btn.style.background="#FF3B30";el.mp4Btn.style.color="#fff";el.mp4Btn.style.borderColor="#FF3B30";
     recTimer=setInterval(()=>{const s=Math.floor((Date.now()-recStart)/1000);el.recordTimer.textContent=`REC ${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`},250);
     if(!playing){c=0;play()}
-    status(`Recording ${outW}x${outH} 60fps... Click STOP when done. Main preview stays full size!`);
+    status(`Recording ${outW}x${outH} - preview stays full size, no shrink!`);
   }catch(e){window.__exporting=false; status(`Record failed: ${e.message}`,true); console.error(e)}
 });
 
@@ -505,8 +470,7 @@ setMode("REEL-PATCH");setAspect("9:16");resize();frameLoop();
 })();
 </script>
 
-<!-- FFmpeg removed for Brave-proof build -->
-
+<!-- FFmpeg removed for 1080p build -->
 
 </body>
 </html>
