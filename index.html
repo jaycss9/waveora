@@ -84,9 +84,9 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
     <section class="card">
       <div class="label">EXPORT</div>
       <div style="display:flex;flex-direction:column;gap:10px">
-        <button class="btn" id="mp4Btn" type="button">EXPORT 4K MP4</button>
+        <button class="btn" id="mp4Btn" type="button">EXPORT 1080p</button>
         <button class="btn" id="pngBtn" type="button">SAVE PNG</button>
-        <p id="exportNote" style="font-size:10px;color:#9A9A9A;line-height:1.4">4K-sized MP4 export via FFmpeg.wasm. First export loads the encoder; keep this tab open while it processes.</p>
+        <p id="exportNote" style="font-size:10px;color:#9A9A9A;line-height:1.4">Brave-proof 1080p export - instant, no FFmpeg. Works as MP4 on Chrome 120+ / WebM elsewhere. Both upload to IG/TikTok.. First export loads the encoder; keep this tab open while it processes.</p>
       </div>
     </section>
   </div>
@@ -388,22 +388,19 @@ el.pngBtn.addEventListener("click",()=>{
   },"image/png");
 });
 
-/* ---------- FIXED high-quality MP4 export ---------- */
+
+/* ---------- BRAVE-PROOF 1080p DIRECT EXPORT (no FFmpeg needed) ---------- */
 let exportWidth=0, exportHeight=0, prevCanvasW=0, prevCanvasH=0;
-function getExportSize(){
+function getExportSize1080(){
   const aspect=document.querySelector("#aspects button.active")?.dataset.aspect||"9:16";
-  // true 4K, but capped to avoid WASM OOM - use 4K, fallback to 1080p if fails
-  const sizes={"9:16":[2160,3840],"16:9":[3840,2160],"1:1":[2160,2160],"4:5":[2160,2700]};
-  const sizes1080={"9:16":[1080,1920],"16:9":[1920,1080],"1:1":[1080,1080],"4:5":[1080,1350]};
-  const use4k = localStorage.getItem('waveora-4k') !== '0';
-  return { full: sizes[aspect]||sizes["9:16"], fallback: sizes1080[aspect]||sizes1080["9:16"], use4k };
+  const sizes={"9:16":[1080,1920],"16:9":[1920,1080],"1:1":[1080,1080],"4:5":[1080,1350]};
+  return sizes[aspect]||sizes["9:16"];
 }
 function setCanvasExportRes(w,h){
   prevCanvasW = canvas.width;
   prevCanvasH = canvas.height;
   exportWidth=w; exportHeight=h;
   canvas.width=w; canvas.height=h;
-  // force a redraw at new res immediately
   try{ drawFrame(); }catch(e){}
 }
 function restoreCanvasRes(){
@@ -413,149 +410,98 @@ function restoreCanvasRes(){
 el.mp4Btn.addEventListener("click",async()=>{
   if(recording){if(recorder&&recorder.state!=="inactive")recorder.stop();return}
   if(!buffer||!dest){status("Load audio first",true);return}
-  if(location.protocol==="file:"){
-    status("Export blocked on file:// — please run: npx serve .  or  python -m http.server  then open http://localhost:8000",true);
-    return;
-  }
   try{
-    const {full, fallback, use4k} = getExportSize();
-    let [outW,outH] = use4k ? full : fallback;
-    // Step 1: bump canvas to export resolution BEFORE captureStream
+    const [outW,outH] = getExportSize1080();
     setCanvasExportRes(outW,outH);
-    status(`Recording at ${outW}x${outH} — press STOP when done...`);
-    
-    // give browser a frame to render at new size
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
     
     const canvasStream = canvas.captureStream(60);
-    if(canvasStream.getVideoTracks().length===0) throw new Error("captureStream failed - canvas not visible?");
-    const audioTracks = dest.stream.getAudioTracks();
-    const stream=new MediaStream([...canvasStream.getVideoTracks(),...audioTracks]);
+    if(canvasStream.getVideoTracks().length===0) throw new Error("captureStream failed");
+    const stream=new MediaStream([...canvasStream.getVideoTracks(),...dest.stream.getAudioTracks()]);
     
-    const types=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
-    const type=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t)) || "video/webm";
-    if(!window.MediaRecorder || !MediaRecorder.isTypeSupported(type)){
-      throw new Error("This browser doesn't support MediaRecorder webm. Use Chrome/Edge 120+");
-    }
-    recorder=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:12000000,audioBitsPerSecond:192000});
+    // Try to get MP4 directly (Chrome 120+ supports it), else WebM - both are instant, no FFmpeg
+    const prefTypes = [
+      "video/mp4;codecs=avc1,opus", // Chrome new
+      "video/mp4;codecs=avc1,aac",
+      "video/mp4",
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm"
+    ];
+    const type = prefTypes.find(t=>window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "video/webm";
+    console.log("Recording with", type);
+    
+    recorder=new MediaRecorder(stream,{
+      mimeType:type,
+      videoBitsPerSecond: 8000000, // 8 Mbps for 1080p - sharp but not huge
+      audioBitsPerSecond: 192000
+    });
     chunks=[];
-    recorder.ondataavailable=e=>{if(e.data && e.data.size>0)chunks.push(e.data)};
+    recorder.ondataavailable=e=>{if(e.data && e.data.size>0) chunks.push(e.data)};
     recorder.onerror=e=>{status(`Recording failed: ${e.error?.message||"unknown"}`,true); restoreCanvasRes();};
-
     recorder.onstop=async()=>{
       restoreCanvasRes();
-      if(chunks.length===0){status("No data recorded - try again and keep tab focused",true); return;}
+      if(chunks.length===0){status("No data - keep tab focused while recording",true); return;}
       try{
-        el.mp4Btn.disabled=true;el.mp4Btn.textContent=`ENCODING ${outW}x${outH}…`;
-        status("Recorded. Loading FFmpeg.wasm (first time ~30MB)...");
-        const webmBlob=new Blob(chunks,{type});
-        // Try 4K, on failure fallback to 1080p webm download
-        let mp4Blob=null;
-        try{
-          mp4Blob=await window.waveoraEncodeMp4(webmBlob,{outW,outH, onProgress:(p,msg)=>{
-            if(p>=0) el.mp4Btn.textContent=`ENCODING ${Math.round(p*100)}%`;
-            if(msg) status(msg);
-          }});
-        }catch(encErr){
-          console.warn("4K encode failed, trying 1080p",encErr);
-          if(use4k){
-            status(`4K encode failed (${encErr.message}). Retrying 1080p...`);
-            // Re-encode with downscale to 1080p to save memory
-            const [fW,fH]=fallback;
-            try{
-              mp4Blob=await window.waveoraEncodeMp4(webmBlob,{outW:fW,outH:fH, onProgress:(p)=>{el.mp4Btn.textContent=`ENCODING 1080p ${Math.round(p*100)}%`}});
-              outW=fW; outH=fH;
-            }catch(e2){
-              throw encErr; // throw original
-            }
-          }else{ throw encErr; }
-        }
-        const url=URL.createObjectURL(mp4Blob),a=document.createElement("a");
-        a.href=url;a.download=`waveora-${mode.replace("REEL-","").toLowerCase()}-${outW}x${outH}.mp4`;
+        const blob=new Blob(chunks,{type});
+        const ext = type.includes("mp4") ? "mp4" : "webm";
+        const url=URL.createObjectURL(blob),a=document.createElement("a");
+        a.href=url;
+        a.download=`waveora-${mode.replace("REEL-","").toLowerCase()}-${outW}x${outH}.${ext}`;
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-        status(`Saved MP4 — ${outW}×${outH}, H.264 + AAC. If you want WebM fallback too, it was also recorded.`);
-        // also offer webm as backup
-        const webmUrl=URL.createObjectURL(webmBlob);
-        const b=document.createElement("a");b.href=webmUrl;b.download=`waveora-backup-${outW}x${outH}.webm`;
-        // don't auto-download backup, just log
-        setTimeout(()=>URL.revokeObjectURL(webmUrl),60000);
+        status(`Saved ${outW}x${outH} ${ext.toUpperCase()} - ${ (blob.size/1048576).toFixed(1)}MB. This works in Brave, no FFmpeg needed. MP4/WebM both upload to IG/TikTok.`);
+        // Offer to also convert to true MP4 via FFmpeg if user wants - optional, not blocking
+        if(ext==="webm" && !window.crossOriginIsolated){
+          status(`Saved ${outW}x${outH} WEBM. Note: Brave blocks FFmpeg 4K, but this WebM is high quality and works everywhere. If you need true .mp4, open in Chrome with shields down.`);
+        }
       }catch(e){
         console.error(e);
-        // Fallback: offer the raw webm which is always playable
-        try{
-          const webmBlob=new Blob(chunks,{type});
-          const url=URL.createObjectURL(webmBlob),a=document.createElement("a");
-          a.href=url;a.download=`waveora-${mode.replace("REEL-","").toLowerCase()}-fallback.webm`;
-          document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-          status(`FFmpeg MP4 failed (${e.message}). Saved WebM fallback instead. Try Chrome, localhost, and disable Brave shields. Error: ${e.message}`,true);
-        }catch(e2){
-          status(`MP4 export failed: ${e.message}. Must be on http://localhost, Chrome/Edge, tab focused.`,true);
-        }
+        status(`Save failed: ${e.message}`,true);
       }finally{
-        recording=false;el.mp4Btn.disabled=false;el.mp4Btn.textContent="EXPORT 4K MP4";el.mp4Btn.style.background="";el.mp4Btn.style.color="";el.mp4Btn.style.borderColor="";
+        recording=false;el.mp4Btn.disabled=false;el.mp4Btn.textContent="EXPORT 1080p";el.mp4Btn.style.background="";el.mp4Btn.style.color="";el.mp4Btn.style.borderColor="";
         el.recordTimer.textContent="";clearInterval(recTimer);
       }
     };
     recorder.start(100);recording=true;recStart=Date.now();
-    el.mp4Btn.textContent="STOP & SAVE MP4";el.mp4Btn.style.background="#FF3B30";el.mp4Btn.style.color="#fff";el.mp4Btn.style.borderColor="#FF3B30";
+    el.mp4Btn.textContent="STOP & SAVE";el.mp4Btn.style.background="#FF3B30";el.mp4Btn.style.color="#fff";el.mp4Btn.style.borderColor="#FF3B30";
     recTimer=setInterval(()=>{const s=Math.floor((Date.now()-recStart)/1000);el.recordTimer.textContent=`REC ${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`},250);
     if(!playing){c=0;play()}
+    status(`Recording ${outW}x${outH} at 60fps... Click STOP when done. Keep this tab focused!`);
   }catch(e){restoreCanvasRes();status(`Record failed: ${e.message}`,true);console.error(e)}
 });
+
 
 setMode("REEL-PATCH");setAspect("9:16");resize();frameLoop();
 })();
 </script>
 
+<!-- FFmpeg removed for Brave-proof 1080p build - uncomment below if you want optional 4K
 <script type="module">
-  import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/+esm";
-  import { fetchFile, toBlobURL } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/+esm";
+  import { FFmpeg } from "https://esm.sh/@ffmpeg/ffmpeg@0.12.10";
+  import { fetchFile, toBlobURL } from "https://esm.sh/@ffmpeg/util@0.12.1";
   let ffmpegInstance=null, ffmpegLoading=null;
-  async function getFFmpeg(onProgress){
-    if(ffmpegInstance?.loaded) return ffmpegInstance;
-    if(ffmpegLoading) return ffmpegLoading;
+  async function getFFmpeg(){
+    if(ffmpegInstance?.loaded)return ffmpegInstance;
+    if(ffmpegLoading)return ffmpegLoading;
     ffmpegLoading=(async()=>{
       const ff=new FFmpeg();
-      ff.on("log",({message})=>{ if(message) console.log("FFmpeg:",message); });
-      ff.on("progress",({progress})=>{
-        if(onProgress && Number.isFinite(progress)) onProgress(progress, `ENCODING ${Math.round(progress*100)}%`);
-      });
-      const isIsolated = window.crossOriginIsolated;
-      console.log("crossOriginIsolated:", isIsolated);
-      // Vercel with COOP/COEP headers -> use MT core (4x faster), else use ST
-      const corePkg = isIsolated ? "@ffmpeg/core-mt@0.12.10" : "@ffmpeg/core@0.12.10";
-      const base = `https://cdn.jsdelivr.net/npm/${corePkg}/dist/umd`;
-      try{
-        const coreURL = await toBlobURL(`${base}/ffmpeg-core.js`,"text/javascript");
-        const wasmURL = await toBlobURL(`${base}/ffmpeg-core.wasm`,"application/wasm");
-        const workerURL = isIsolated ? await toBlobURL(`${base}/ffmpeg-core.worker.js`,"text/javascript") : undefined;
-        await ff.load({coreURL, wasmURL, workerURL});
-      }catch(e){
-        console.error("FFmpeg load failed",e);
-        throw new Error("FFmpeg failed: " + e.message + ". Disable adblock / Brave shield.");
-      }
-      ffmpegInstance=ff; return ff;
+      ff.on("log",({message})=>{if(message)console.debug("FFmpeg:",message)});
+      ff.on("progress",({progress})=>{if(Number.isFinite(progress))console.debug(`FFmpeg progress: ${Math.round(progress*100)}%`)});
+      const base="https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
+      await ff.load({coreURL:await toBlobURL(`${base}/ffmpeg-core.js`,"text/javascript"),wasmURL:await toBlobURL(`${base}/ffmpeg-core.wasm`,"application/wasm")});
+      ffmpegInstance=ff;return ff;
     })();
-    try{ return await ffmpegLoading }finally{ ffmpegLoading=null }
+    try{return await ffmpegLoading}finally{ffmpegLoading=null}
   }
-  window.waveoraEncodeMp4=async(blob,{outW,outH,onProgress})=>{
-    const ff=await getFFmpeg(onProgress);
+  window.waveoraEncodeMp4=async(blob,{outW,outH})=>{
+    const ff=await getFFmpeg();
     const input="waveora-input.webm",output="waveora-output.mp4";
-    if(onProgress) onProgress(0.05,"Writing input...");
     await ff.writeFile(input,await fetchFile(blob));
-    if(onProgress) onProgress(0.15,"Transcoding H.264 4K...");
-    const threads = window.crossOriginIsolated ? "0" : "1"; // 0 = auto on MT
-    const preset = window.crossOriginIsolated ? "medium" : "superfast"; // better quality when MT
-    const vf = `scale=${outW}:${outH}:flags=lanczos,setsar=1,format=yuv420p`;
-    // High quality: crf 18 on Vercel (MT), crf 20 on GitHub (ST)
-    const crf = window.crossOriginIsolated ? "18" : "20";
-    await ff.exec(["-i",input,"-vf",vf,"-c:v","libx264","-preset",preset,"-crf",crf,"-pix_fmt","yuv420p","-c:a","aac","-b:a","192k","-ar","48000","-movflags","+faststart","-threads",threads,"-y",output]);
-    if(onProgress) onProgress(0.95,"Finalizing...");
+    await ff.exec(["-i",input,"-vf",`scale=${outW}:${outH}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${outW}:${outH}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,format=yuv420p`,"-c:v","libx264","-preset","ultrafast","-crf","18","-pix_fmt","yuv420p","-c:a","aac","-b:a","192k","-ar","48000","-movflags","+faststart","-threads","1","-y",output]);
     const data=await ff.readFile(output);
     try{await ff.deleteFile(input);await ff.deleteFile(output)}catch{}
     return new Blob([data.buffer],{type:"video/mp4"});
   };
-</script>
-
+-->
 </body>
 </html>
